@@ -1,0 +1,10 @@
+How to get the sources?
+=======================
+
+Upstream is a monorepo.
+
+So we take a git commit :
+- remove the .git/, .gitattributes, .gitignore and
+.travis.yml because they don't belong here ;
+- remove the examples/example-dockpanel-*/ directories
+because they're not source.

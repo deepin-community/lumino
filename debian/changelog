@@ -1,0 +1,55 @@
+lumino (2021.11.4-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Julien Puydt <jpuydt@debian.org>  Wed, 10 Nov 2021 18:57:29 +0100
+
+lumino (2021.10.25-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Julien Puydt <jpuydt@debian.org>  Tue, 02 Nov 2021 20:30:42 +0100
+
+lumino (2021.9.30-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Refresh the patch to build under Debian.
+  * Drop the patch unbreaking typescript 4.4 (upstream).
+
+ -- Julien Puydt <jpuydt@debian.org>  Sun, 03 Oct 2021 22:14:03 +0200
+
+lumino (2021.8.23-2) unstable; urgency=medium
+
+  * Drop the dep on nodejs for the main package.
+
+ -- Julien Puydt <jpuydt@debian.org>  Tue, 28 Sep 2021 08:06:48 +0200
+
+lumino (2021.8.23-1) experimental; urgency=medium
+
+  * Adapt d/watch to new upstream versioning.
+  * Bump standards-version to 4.6.0.
+  * New upstream release.
+  * Refresh patch.
+  * Drop dep on node-typescript-types (Closes: #979798).
+  * Tighter dep on recent node-tslib.
+  * Add a patch to unbreak compilation with recent tsc (Closes: #994545).
+
+ -- Julien Puydt <jpuydt@debian.org>  Tue, 21 Sep 2021 08:31:04 +0200
+
+lumino (0~20200824+git93880412-2) unstable; urgency=medium
+
+  [ lintian-brush ]
+  * Set upstream metadata fields: Bug-Submit.
+  * Remove obsolete fields Contact, Name from debian/upstream/metadata (already
+    present in machine-readable debian/copyright).
+
+  [ Xavier Guimard ]
+  * Bump standards-version to 4.5.1.
+
+ -- Julien Puydt <jpuydt@debian.org>  Sun, 22 Nov 2020 21:28:32 +0100
+
+lumino (0~20200824+git93880412-1) unstable; urgency=medium
+
+  * Initial release (Closes: #972487)
+
+ -- Julien Puydt <jpuydt@debian.org>  Sun, 08 Nov 2020 20:46:50 +0100

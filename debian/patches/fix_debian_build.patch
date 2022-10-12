@@ -1,0 +1,518 @@
+Description: make it possible to build directly with tsc
+Author: Julien Puydt
+Forwarded: Debian-specific
+
+--- lumino.orig/packages/algorithm/tsconfig.json
++++ lumino/packages/algorithm/tsconfig.json
+@@ -16,7 +16,11 @@
+     "lib": ["ES5", "ES2015.Collection", "ES2015.Iterable"],
+     "importHelpers": true,
+     "types": [],
+-    "rootDir": "src"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"]
++    }
+   },
+   "include": ["src/*"]
+ }
+--- lumino.orig/packages/collections/tsconfig.json
++++ lumino/packages/collections/tsconfig.json
+@@ -16,12 +16,12 @@
+     "lib": ["ES5"],
+     "importHelpers": true,
+     "types": [],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../algorithm"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/signaling/tsconfig.json
++++ lumino/packages/signaling/tsconfig.json
+@@ -16,12 +16,12 @@
+     "lib": ["ES5", "ES2015.Collection", "DOM"],
+     "importHelpers": true,
+     "types": [],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../algorithm"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/virtualdom/tsconfig.json
++++ lumino/packages/virtualdom/tsconfig.json
+@@ -15,13 +15,14 @@
+     "outDir": "lib",
+     "lib": ["ES5", "ES2015.Collection", "DOM"],
+     "importHelpers": true,
+-    "types": [],
+-    "rootDir": "src"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/collections": ["../collections"]
++    },
++    "suppressImplicitAnyIndexErrors": true
+   },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../algorithm"
+-    }
+-  ]
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/messaging/tsconfig.json
++++ lumino/packages/messaging/tsconfig.json
+@@ -15,16 +15,15 @@
+     "outDir": "lib",
+     "lib": ["ES5", "ES2015.Collection", "DOM"],
+     "importHelpers": true,
+-    "types": ["@types/node"],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../algorithm"
+-    },
+-    {
+-      "path": "../collections"
++    "types": ["node"],
++    "typeRoots": ["/usr/share/nodejs/@types"],
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/collections": ["../collections"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/disposable/tsconfig.json
++++ lumino/packages/disposable/tsconfig.json
+@@ -16,15 +16,12 @@
+     "outDir": "lib",
+     "lib": ["ES5", "ES2015.Collection", "ES2015.Iterable"],
+     "importHelpers": true,
+-    "types": []
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../algorithm"
+-    },
+-    {
+-      "path": "../signaling"
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/signaling": ["../signaling"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/polling/tsconfig.json
++++ lumino/packages/polling/tsconfig.json
+@@ -15,19 +15,16 @@
+     "outDir": "lib",
+     "lib": ["DOM", "ES5", "ES2015.Promise"],
+     "importHelpers": true,
+-    "types": ["@types/node"],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../coreutils"
+-    },
+-    {
+-      "path": "../disposable"
+-    },
+-    {
+-      "path": "../signaling"
++    "types": ["node"],
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/coreutils": ["../coreutils"],
++      "@lumino/disposable": ["../disposable"],
++      "@lumino/signaling": ["../signaling"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/datastore/tsconfig.json
++++ lumino/packages/datastore/tsconfig.json
+@@ -16,12 +16,17 @@
+     "rootDir": "src",
+     "lib": ["dom", "es6"],
+     "importHelpers": true,
+-    "types": []
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../signaling"
++    "types": [],
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/collections": ["../collections"],
++      "@lumino/coreutils": ["../coreutils"],
++      "@lumino/disposable": ["../disposable"],
++      "@lumino/messaging": ["../messaging"],
++      "@lumino/signaling": ["../signaling"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/widgets/tsconfig.json
++++ lumino/packages/widgets/tsconfig.json
+@@ -22,42 +22,22 @@
+     ],
+     "importHelpers": true,
+     "types": [],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../algorithm"
+-    },
+-    {
+-      "path": "../commands"
+-    },
+-    {
+-      "path": "../coreutils"
+-    },
+-    {
+-      "path": "../disposable"
+-    },
+-    {
+-      "path": "../domutils"
+-    },
+-    {
+-      "path": "../dragdrop"
+-    },
+-    {
+-      "path": "../keyboard"
+-    },
+-    {
+-      "path": "../messaging"
+-    },
+-    {
+-      "path": "../properties"
+-    },
+-    {
+-      "path": "../signaling"
+-    },
+-    {
+-      "path": "../virtualdom"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++       "tslib": ["/usr/share/nodejs/tslib"],
++       "@lumino/algorithm": ["../algorithm"],
++       "@lumino/commands": ["../commands"],
++       "@lumino/coreutils": ["../coreutils"],
++       "@lumino/disposable": ["../disposable"],
++       "@lumino/domutils": ["../domutils"],
++       "@lumino/dragdrop": ["../dragdrop"],
++       "@lumino/keyboard": ["../keyboard"],
++       "@lumino/messaging": ["../messaging"],
++       "@lumino/properties": ["../properties"],
++       "@lumino/signaling": ["../signaling"],
++       "@lumino/virtualdom": ["../virtualdom"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/dragdrop/tsconfig.json
++++ lumino/packages/dragdrop/tsconfig.json
+@@ -16,15 +16,15 @@
+     "lib": ["ES5", "ES2015.Promise", "ES2015.Iterable", "DOM"],
+     "importHelpers": true,
+     "types": [],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../coreutils"
+-    },
+-    {
+-      "path": "../disposable"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/coreutils": ["../coreutils"],
++      "@lumino/disposable": ["../disposable"],
++      "@lumino/signaling": ["../signaling"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/commands/tsconfig.json
++++ lumino/packages/commands/tsconfig.json
+@@ -16,30 +16,18 @@
+     "lib": ["ES5", "ES2015.Promise", "ES2015.Iterable", "DOM"],
+     "importHelpers": true,
+     "types": [],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../algorithm"
+-    },
+-    {
+-      "path": "../coreutils"
+-    },
+-    {
+-      "path": "../disposable"
+-    },
+-    {
+-      "path": "../domutils"
+-    },
+-    {
+-      "path": "../keyboard"
+-    },
+-    {
+-      "path": "../signaling"
+-    },
+-    {
+-      "path": "../virtualdom"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/coreutils": ["../coreutils"],
++      "@lumino/disposable": ["../disposable"],
++      "@lumino/domutils": ["../domutils"],
++      "@lumino/keyboard": ["../keyboard"],
++      "@lumino/signaling": ["../signaling"],
++      "@lumino/virtualdom": ["../virtualdom"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/application/tsconfig.json
++++ lumino/packages/application/tsconfig.json
+@@ -22,18 +22,19 @@
+     ],
+     "importHelpers": true,
+     "types": [],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../commands"
+-    },
+-    {
+-      "path": "../coreutils"
+-    },
+-    {
+-      "path": "../widgets"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/commands": ["../commands"],
++      "@lumino/coreutils": ["../coreutils"],
++      "@lumino/disposable": ["../disposable"],
++      "@lumino/messaging": ["../messaging"],
++      "@lumino/signaling": ["../signaling"],
++      "@lumino/virtualdom": ["../virtualdom"],
++      "@lumino/widgets": ["../widgets"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/packages/datagrid/tsconfig.json
++++ lumino/packages/datagrid/tsconfig.json
+@@ -16,33 +16,22 @@
+     "lib": ["ES5", "ES2015.Collection", "ES2015.Iterable", "DOM"],
+     "importHelpers": true,
+     "types": [],
+-    "rootDir": "src"
+-  },
+-  "include": ["src/*"],
+-  "references": [
+-    {
+-      "path": "../algorithm"
+-    },
+-    {
+-      "path": "../coreutils"
+-    },
+-    {
+-      "path": "../disposable"
+-    },
+-    {
+-      "path": "../domutils"
+-    },
+-    {
+-      "path": "../dragdrop"
+-    },
+-    {
+-      "path": "../messaging"
+-    },
+-    {
+-      "path": "../signaling"
+-    },
+-    {
+-      "path": "../widgets"
++    "rootDir": "src",
++    "baseUrl": ".",
++    "paths": {
++      "tslib": ["/usr/share/nodejs/tslib"],
++      "@lumino/algorithm": ["../algorithm"],
++      "@lumino/commands": ["../commands"],
++      "@lumino/coreutils": ["../coreutils"],
++      "@lumino/disposable": ["../disposable"],
++      "@lumino/domutils": ["../domutils"],
++      "@lumino/dragdrop": ["../dragdrop"],
++      "@lumino/keyboard": ["../keyboard"],
++      "@lumino/messaging": ["../messaging"],
++      "@lumino/signaling": ["../signaling"],
++      "@lumino/virtualdom":  ["../virtualdom"],
++      "@lumino/widgets": ["../widgets"]
+     }
+-  ]
++  },
++  "include": ["src/*"]
+ }
+--- lumino.orig/examples/example-datagrid/tsconfig.json
++++ lumino/examples/example-datagrid/tsconfig.json
+@@ -10,7 +10,19 @@
+     "target": "ES5",
+     "outDir": "./build",
+     "lib": ["ES5", "ES2015.Promise", "ES2015.Iterable", "DOM"],
+-    "types": []
++    "baseUrl": ".",
++    "paths": {
++      "@lumino/algorithm": ["../../packages/algorithm"],
++      "@lumino/commands": ["../../packages/commands"],
++      "@lumino/coreutils": ["../../packages/coreutils"],
++      "@lumino/datagrid": ["../../packages/datagrid"],
++      "@lumino/disposable": ["../../packages/disposable"],
++      "@lumino/keyboard": ["../../packages/keyboard"],
++      "@lumino/messaging": ["../../packages/messaging"],
++      "@lumino/signaling": ["../../packages/signaling"],
++      "@lumino/virtualdom": ["../../packages/virtualdom"],
++      "@lumino/widgets": ["../../packages/widgets"]
++    }
+   },
+   "include": ["src/*"]
+ }
+--- lumino.orig/examples/example-datagrid/webpack.config.js
++++ lumino/examples/example-datagrid/webpack.config.js
+@@ -8,6 +8,8 @@
+     filename: 'bundle.example.js',
+     publicPath: './build/'
+   },
++  resolve: { modules: ['../..', '/usr/share/nodejs']},
++  resolveLoader: { modules: ['/usr/share/nodejs']},
+   module: {
+     rules: [
+       { test: /\.css$/, use: ['style-loader', 'css-loader'] },
+--- lumino.orig/examples/example-datastore/tsconfig.json
++++ lumino/examples/example-datastore/tsconfig.json
+@@ -17,6 +17,22 @@
+       "ES2015.Iterable"
+     ],
+     "types": []
++    "baseUrl": ".",
++    "paths": {
++      "websocket": ["/usr/lib/x86_64-linux-gnu/nodejs/websocket"],
++      "codemirror": ["/usr/share/nodejs/codemirror"],
++      "@lumino/algorithm": ["/usr/share/nodejs/@lumino/algorithm"],
++      "@lumino/commands": ["/usr/share/nodejs/@lumino/commands"],
++      "@lumino/coreutils": ["/usr/share/nodejs/@lumino/coreutils"],
++      "@lumino/datagrid": ["/usr/share/nodejs/@lumino/datagrid"],
++      "@lumino/datastore": ["/usr/share/nodejs/@lumino/datastore"],
++      "@lumino/disposable": ["/usr/share/nodejs/@lumino/disposable"],
++      "@lumino/keyboard": ["/usr/share/nodejs/@lumino/keyboard"],
++      "@lumino/messaging": ["/usr/share/nodejs/@lumino/messaging"],
++      "@lumino/signaling": ["/usr/share/nodejs/@lumino/signaling"],
++      "@lumino/virtualdom": ["/usr/share/nodejs/@lumino/virtualdom"],
++      "@lumino/widgets": ["/usr/share/nodejs/@lumino/widgets"]
++    }
+   },
+   "include": ["src/*"]
+ }
+--- lumino.orig/examples/example-dockpanel/tsconfig.json
++++ lumino/examples/example-dockpanel/tsconfig.json
+@@ -11,7 +11,18 @@
+     "target": "ES5",
+     "outDir": "./build",
+     "lib": ["ES5", "ES2015.Promise", "ES2015.Iterable", "DOM"],
+-    "types": []
++    "types": [],
++    "baseUrl": ".",
++    "paths": {
++      "@lumino/algorithm": ["/usr/share/nodejs/@lumino/algorithm"],
++      "@lumino/commands": ["/usr/share/nodejs/@lumino/commands"],
++      "@lumino/coreutils": ["/usr/share/nodejs/@lumino/coreutils"],
++      "@lumino/disposable": ["/usr/share/nodejs/@lumino/disposable"],
++      "@lumino/messaging": ["/usr/share/nodejs/@lumino/messaging"],
++      "@lumino/signaling": ["/usr/share/nodejs/@lumino/signaling"],
++      "@lumino/virtualdom": ["/usr/share/nodejs/@lumino/virtualdom"],
++      "@lumino/widgets": ["/usr/share/nodejs/@lumino/widgets"]
++    }
+   },
+   "include": ["src/*"]
+ }
+--- lumino.orig/examples/example-dockpanel/webpack.config.js
++++ lumino/examples/example-dockpanel/webpack.config.js
+@@ -9,6 +9,8 @@
+     filename: 'bundle.example.js',
+     publicPath: './build/'
+   },
++  resolve: { modules: ['../..', '/usr/share/nodejs']},
++  resolveLoader: { modules: ['/usr/share/nodejs']},
+   module: {
+     rules: [
+       { test: /\.js$/, use: ['source-map-loader'], enforce: 'pre' },

@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	for package in algorithm coreutils keyboard properties \
+		collections domutils signaling virtualdom \
+		disposable messaging \
+		datastore dragdrop commands polling \
+		widgets \
+		application datagrid; do \
+          (cd packages/$$package && echo "Compiling $$package" \
+	   && tsc && rollup lib/*.js -f cjs -m -d dist) ; \
+	done
+	ln -s packages/ @lumino
+	for example in example-datagrid ; do \
+	  (cd examples/$$example && echo "Compiling $$example" \
+	  && tsc && webpack) ; \
+	done

@@ -1,0 +1,5 @@
+* for examples/example-datastore, we would need:
+  - @type/websocket (#972486)
+  - @types/codemirror (#972485)
+  - it doesn't find fs, http and path (didn't dig given above)
+* for examples/example-dockpanel, we would need webpack's source-map-loader.111
