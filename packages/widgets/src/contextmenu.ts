@@ -7,7 +7,7 @@
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-import { ArrayExt, each } from '@lumino/algorithm';
+import { ArrayExt } from '@lumino/algorithm';
 
 import { CommandRegistry } from '@lumino/commands';
 
@@ -78,6 +78,9 @@ export class ContextMenu {
    * position indicated by the event.
    */
   open(event: MouseEvent): boolean {
+    // Prior to any DOM modifications update the window data.
+    Menu.saveWindowData();
+
     // Clear the current contents of the context menu.
     this.menu.clearItems();
 
@@ -100,9 +103,9 @@ export class ContextMenu {
     }
 
     // Add the filtered items to the menu.
-    each(items, item => {
+    for (const item of items) {
       this.menu.addItem(item);
-    });
+    }
 
     // Open the context menu at the current mouse position.
     this.menu.open(event.clientX, event.clientY);

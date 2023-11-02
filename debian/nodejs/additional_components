@@ -1,1 +1,8 @@
-packages/*
+!buildutils
+!examples/example-accordionpanel
+!examples/example-datagrid
+!examples/example-dockpanel-amd
+!examples/example-dockpanel-iife
+!examples/example-dockpanel
+!examples/example-menubar
+!examples/example-nested-dockpanel-amd

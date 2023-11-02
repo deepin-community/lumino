@@ -2,14 +2,16 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: lumino
 Upstream-Contact: https://github.com/jupyterlab/lumino/issues
 Source: https://github.com/jupyterlab/lumino
+Files-Excluded: .yarn
 
 Files: *
-Copyright: 2014-2017 PhosphorJS contributors
-           2019 Jupyter Project contributors
+Copyright: 2014-2018 PhosphorJS contributors
+           2019-2023 Jupyter Development Team
 License: BSD-3-clause
 
 Files: debian/*
-Copyright: 2020, Julien Puydt <jpuydt@debian.org>
+Copyright: 2020 Julien Puydt <jpuydt@debian.org>
+ 2023 Yadd <yadd@debian.org>
 License: BSD-3-clause
 
 License: BSD-3-clause

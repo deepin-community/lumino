@@ -621,6 +621,31 @@ export class BasicMouseHandler implements DataGrid.IMouseHandler {
       return;
     }
 
+    if (region === 'column-header' || region === 'corner-header') {
+      // Convert the hit test into a part.
+      const handle = Private.resizeHandleForHitTest(hit);
+
+      if (handle === 'left' || handle === 'right') {
+        let colIndex = handle === 'left' ? column - 1 : column;
+
+        let colRegion: DataModel.ColumnRegion =
+          region === 'column-header' ? 'body' : 'row-header';
+
+        if (colIndex < 0) {
+          if (region === 'column-header') {
+            // If the column is -1, it means we are in the corner header
+            colIndex = grid.dataModel.columnCount('row-header') - 1;
+            colRegion = 'row-header';
+          } else {
+            // If we are on the left edge of the row header, do nothing
+            return;
+          }
+        }
+
+        grid.resizeColumn(colRegion, colIndex, null);
+      }
+    }
+
     if (region === 'body') {
       if (grid.editable) {
         const cell: CellEditor.CellConfig = {
@@ -667,11 +692,13 @@ export class BasicMouseHandler implements DataGrid.IMouseHandler {
     switch (event.deltaMode) {
       case 0: // DOM_DELTA_PIXEL
         break;
-      case 1: // DOM_DELTA_LINE
+      case 1: {
+        // DOM_DELTA_LINE
         let ds = grid.defaultSizes;
         dx *= ds.columnWidth;
         dy *= ds.rowHeight;
         break;
+      }
       case 2: // DOM_DELTA_PAGE
         dx *= grid.pageWidth;
         dy *= grid.pageHeight;
@@ -680,8 +707,23 @@ export class BasicMouseHandler implements DataGrid.IMouseHandler {
         throw 'unreachable';
     }
 
-    // Scroll by the desired amount.
-    grid.scrollBy(dx, dy);
+    // Only scroll and stop the event propagation if needed.
+    if (
+      // Scrolling left and not reached min already
+      (dx < 0 && grid.scrollX !== 0) ||
+      // Scrolling right and not reached max already
+      (dx > 0 && grid.scrollX !== grid.maxScrollX) ||
+      // Scrolling top and not reached min already
+      (dy < 0 && grid.scrollY !== 0) ||
+      // Scrolling down and not reached max already
+      (dy > 0 && grid.scrollY !== grid.maxScrollY)
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      // Scroll by the desired amount.
+      grid.scrollBy(dx, dy);
+    }
   }
 
   /**
@@ -841,7 +883,7 @@ export namespace PressData {
 /**
  * The namespace for the module implementation details.
  */
-export namespace Private {
+namespace Private {
   /**
    * Creates a CellConfig object from a hit region.
    */

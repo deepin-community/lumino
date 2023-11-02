@@ -9,14 +9,14 @@
 |----------------------------------------------------------------------------*/
 import { expect } from 'chai';
 
-import { Signal } from '@lumino/signaling';
+import { Signal, Stream } from '@lumino/signaling';
 
 class TestObject {
   readonly one = new Signal<this, void>(this);
 
   readonly two = new Signal<this, number>(this);
 
-  readonly three = new Signal<this, string[]>(this);
+  readonly three = new Stream<this, string[]>(this);
 }
 
 class ExtendedObject extends TestObject {
@@ -464,6 +464,148 @@ describe('@lumino/signaling', () => {
         expect(called).to.equal(false);
         obj.one.emit(undefined);
         expect(called).to.equal(true);
+      });
+    });
+  });
+
+  describe('Stream', () => {
+    describe('#[Symbol.asyncIterator]()', () => {
+      it('should yield emissions', async () => {
+        const stream = new Stream<unknown, string>({});
+        const input = 'async';
+        const expected = 'aINTERRUPTEDsync';
+        const wait = Promise.resolve();
+        let emitted = '';
+        let once = true;
+        stream.connect(() => {
+          if (once) {
+            once = false;
+            stream.emit('I');
+            stream.emit('N');
+            stream.emit('T');
+            stream.emit('E');
+            stream.emit('R');
+            stream.emit('R');
+            stream.emit('U');
+            stream.emit('P');
+            stream.emit('T');
+            stream.emit('E');
+            stream.emit('D');
+          }
+        });
+        input.split('').forEach(x => wait.then(() => stream.emit(x)));
+        wait.then(() => stream.stop());
+        for await (const letter of stream) {
+          emitted = emitted.concat(letter);
+        }
+        expect(emitted).to.equal(expected);
+      });
+
+      it('should return an async iterator', async () => {
+        const stream = new Stream<unknown, string>({});
+        const input = 'iterator';
+        const expected = 'iAHEMterator';
+        const wait = Promise.resolve();
+        let emitted = '';
+        let once = true;
+        stream.connect(() => {
+          if (once) {
+            once = false;
+            stream.emit('A');
+            stream.emit('H');
+            stream.emit('E');
+            stream.emit('M');
+          }
+        });
+        input.split('').forEach(x => wait.then(() => stream.emit(x)));
+        wait.then(() => stream.stop());
+
+        const it = stream[Symbol.asyncIterator]();
+        let emission: IteratorResult<string, any>;
+        while (!(emission = await it.next()).done) {
+          emitted = emitted.concat(emission.value);
+        }
+
+        expect(emitted).to.equal(expected);
+      });
+    });
+
+    describe('#stop()', () => {
+      it('should stop emissions in the async interable', async () => {
+        const stream = new Stream<unknown, string>({});
+        const one = 'alpha';
+        const two = 'beta';
+        const three = 'delta';
+        const expected = 'aINTERRUPTEDlphadelta';
+        const wait = Promise.resolve();
+        let emitted = '';
+        let once = true;
+
+        stream.connect(() => {
+          if (once) {
+            once = false;
+            stream.emit('I');
+            stream.emit('N');
+            stream.emit('T');
+            stream.emit('E');
+            stream.emit('R');
+            stream.emit('R');
+            stream.emit('U');
+            stream.emit('P');
+            stream.emit('T');
+            stream.emit('E');
+            stream.emit('D');
+          }
+        });
+
+        one.split('').forEach(x => wait.then(() => stream.emit(x)));
+        wait.then(() => stream.stop());
+
+        // These should not be collected because the iterator has stopped.
+        two.split('').forEach(x => wait.then(() => stream.emit(x)));
+        wait.then(() => stream.stop());
+
+        for await (const letter of stream) {
+          emitted = emitted.concat(letter);
+        }
+
+        // These should be collected because there is a new iterator.
+        three.split('').forEach(x => wait.then(() => stream.emit(x)));
+        wait.then(() => stream.stop());
+
+        for await (const letter of stream) {
+          emitted = emitted.concat(letter);
+        }
+
+        expect(emitted).to.equal(expected);
+      });
+
+      it('should resolve to `done` in an async iterator', async () => {
+        const stream = new Stream<unknown, string>({});
+        const input = 'stopiterator';
+        const expected = 'sAHEMtopiterator';
+        const wait = Promise.resolve();
+        let emitted = '';
+        let once = true;
+        stream.connect(() => {
+          if (once) {
+            once = false;
+            stream.emit('A');
+            stream.emit('H');
+            stream.emit('E');
+            stream.emit('M');
+          }
+        });
+        input.split('').forEach(x => wait.then(() => stream.emit(x)));
+        wait.then(() => stream.stop());
+
+        const it = stream[Symbol.asyncIterator]();
+        let emission: IteratorResult<string, any>;
+        while (!(emission = await it.next()).done) {
+          emitted = emitted.concat(emission.value);
+        }
+
+        expect(emitted).to.equal(expected);
       });
     });
   });

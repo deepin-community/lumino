@@ -7,8 +7,10 @@
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-import { each, IterableOrArrayLike } from '@lumino/algorithm';
-
+/**
+ * @packageDocumentation
+ * @module disposable
+ */
 import { ISignal, Signal } from '@lumino/signaling';
 
 /**
@@ -87,7 +89,8 @@ export class DisposableDelegate implements IDisposable {
  */
 export class ObservableDisposableDelegate
   extends DisposableDelegate
-  implements IObservableDisposable {
+  implements IObservableDisposable
+{
   /**
    * A signal emitted when the delegate is disposed.
    */
@@ -191,15 +194,15 @@ export namespace DisposableSet {
   /**
    * Create a disposable set from an iterable of items.
    *
-   * @param items - The iterable or array-like object of interest.
+   * @param items - The iterable object of interest.
    *
    * @returns A new disposable initialized with the given items.
    */
-  export function from(items: IterableOrArrayLike<IDisposable>): DisposableSet {
+  export function from(items: Iterable<IDisposable>): DisposableSet {
     let set = new DisposableSet();
-    each(items, item => {
+    for (const item of items) {
       set.add(item);
-    });
+    }
     return set;
   }
 }
@@ -209,7 +212,8 @@ export namespace DisposableSet {
  */
 export class ObservableDisposableSet
   extends DisposableSet
-  implements IObservableDisposable {
+  implements IObservableDisposable
+{
   /**
    * A signal emitted when the set is disposed.
    */
@@ -242,17 +246,15 @@ export namespace ObservableDisposableSet {
   /**
    * Create an observable disposable set from an iterable of items.
    *
-   * @param items - The iterable or array-like object of interest.
+   * @param items - The iterable object of interest.
    *
    * @returns A new disposable initialized with the given items.
    */
-  export function from(
-    items: IterableOrArrayLike<IDisposable>
-  ): ObservableDisposableSet {
+  export function from(items: Iterable<IDisposable>): ObservableDisposableSet {
     let set = new ObservableDisposableSet();
-    each(items, item => {
+    for (const item of items) {
       set.add(item);
-    });
+    }
     return set;
   }
 }

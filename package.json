@@ -1,24 +1,26 @@
 {
   "name": "lumino-top-level",
-  "version": "2021.11.4",
+  "version": "2023.7.27",
   "private": true,
   "workspaces": [
     "examples/*",
     "packages/*",
-    "tests/*"
+    "buildutils"
   ],
   "scripts": {
     "api": "lerna run api",
     "build": "npm run build:src",
     "build:dist": "npm run build && npm run minimize",
     "build:examples": "lerna run build --scope \"@lumino/example-*\" --concurrency 1",
-    "build:src": "lerna run build --scope \"@lumino/!(test-|example-)*\"  --concurrency 1",
+    "build:src": "lerna run build --scope \"@lumino/!(test-|example-)*\" --concurrency 1",
     "build:test": "lerna run build:test",
+    "watch:src": "lerna run watch --scope \"@lumino/!(test-|example-)*\" --parallel",
     "clean": "lerna run clean",
     "clean:examples": "lerna run clean --scope \"@lumino/example-*\"",
     "clean:src": "lerna run clean --scope \"@lumino/!(test-|example-)*\"",
     "clean:tests": "lerna run clean:tests",
-    "docs": "rimraf docs/source/api && lerna run build:src --concurrency 1 && lerna run docs",
+    "predocs": "lerna run build:src",
+    "docs": "typedoc",
     "eslint": "eslint --ext .js,.jsx,.ts,.tsx --cache --fix .",
     "eslint:check": "eslint --ext .js,.jsx,.ts,.tsx --cache .",
     "get:dependency": "get-dependency",
@@ -35,49 +37,41 @@
     "test:examples": "lerna run test --scope \"@lumino/example-*\"",
     "test:firefox": "lerna run test:firefox",
     "test:firefox-headless": "lerna run test:firefox-headless",
-    "test:ie": "lerna run test:ie --concurrency 1",
+    "test:webkit": "lerna run test:webkit --concurrency 1",
+    "test:webkit-headless": "lerna run test:webkit-headless --concurrency 1",
     "update:dependency": "update-dependency --lerna",
-    "update:versions": "lerna version --no-push --no-git-tag-version"
+    "update:versions": "lerna version --no-push --no-git-tag-version",
+    "prepare": "husky install"
   },
-  "dependencies": {},
   "devDependencies": {
-    "@jupyterlab/buildutils": "^3.0.0",
-    "@typescript-eslint/eslint-plugin": "~4.8.1",
-    "@typescript-eslint/parser": "~4.8.1",
-    "eslint": "~7.14.0",
-    "eslint-config-prettier": "~6.15.0",
-    "eslint-plugin-prettier": "~3.1.4",
-    "husky": "^4.2.5",
-    "lerna": "^4.0.0",
-    "lint-staged": "^10.2.13",
-    "prettier": "~2.1.1",
+    "@jupyterlab/buildutils": "^4.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.45.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^8.0.0",
+    "lerna": "^7.1.4",
+    "lint-staged": "^13.1.0",
+    "prettier": "^3.0.0",
     "shell-quote": "^1.7.2",
-    "typedoc": "~0.15.0"
+    "typedoc": "^0.24.8",
+    "typedoc-plugin-mdn-links": "^3.0.3",
+    "typescript": "~5.1.3"
   },
   "jupyter-releaser": {
-    "skip": [
-      "check-links"
-    ],
-    "options": {
-      "ignore-links": [
-        "./api/index.html",
-        "examples/accordionpanel/index.html",
-        "examples/datagrid/index.html",
-        "examples/dockpanel/index.html"
-      ]
-    },
     "hooks": {
       "after-build-changelog": [
+        "yarn",
         "yarn build:dist",
         "node scripts/format-changelog.js"
       ],
-      "before-build-npm": "yarn build:dist",
+      "before-build-npm": [
+        "yarn",
+        "yarn build:dist"
+      ],
       "before-draft-release": "node scripts/tag-versions.js"
     }
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  }
+  "packageManager": "yarn@3.6.0"
 }

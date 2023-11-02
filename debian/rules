@@ -4,17 +4,22 @@
 	dh $@
 
 override_dh_auto_build:
-	for package in algorithm coreutils keyboard properties \
+	set -e && for package in algorithm coreutils keyboard properties \
 		collections domutils signaling virtualdom \
 		disposable messaging \
-		datastore dragdrop commands polling \
+		dragdrop commands polling \
 		widgets \
 		application datagrid; do \
           (cd packages/$$package && echo "Compiling $$package" \
 	   && tsc && rollup lib/*.js -f cjs -m -d dist) ; \
 	done
-	ln -s packages/ @lumino
-	for example in example-datagrid ; do \
-	  (cd examples/$$example && echo "Compiling $$example" \
-	  && tsc && webpack) ; \
-	done
+	# Needs a CSS plugin for rollup
+	#ln -s ../../packages/datagrid node_modules/@lumino/
+	#set -ex && for example in example-datagrid ; do \
+	#  (cd examples/$$example && echo "Compiling $$example" \
+	#  && tsc && rollup build/*.js -f cjs -m -d dist) ; \
+	#done
+
+override_dh_installdocs:
+	dh_installdocs
+	dh_nodejs_autodocs

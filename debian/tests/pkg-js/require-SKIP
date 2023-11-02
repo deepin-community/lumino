@@ -1,0 +1,6 @@
+@lumino/datagrid
+@lumino/application
+@lumino/commands
+@lumino/domutils
+@lumino/dragdrop
+@lumino/widgets

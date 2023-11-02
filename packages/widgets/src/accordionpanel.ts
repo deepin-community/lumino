@@ -3,6 +3,7 @@
 
 import { ArrayExt } from '@lumino/algorithm';
 import { Message } from '@lumino/messaging';
+import { ISignal, Signal } from '@lumino/signaling';
 import { AccordionLayout } from './accordionlayout';
 import { SplitLayout } from './splitlayout';
 import { SplitPanel } from './splitpanel';
@@ -13,7 +14,7 @@ import { Widget } from './widget';
  * A panel which arranges its widgets into resizable sections separated by a title widget.
  *
  * #### Notes
- * This class provides a convenience wrapper around [[AccordionLayout]].
+ * This class provides a convenience wrapper around {@link AccordionLayout}.
  */
 export class AccordionPanel extends SplitPanel {
   /**
@@ -54,6 +55,13 @@ export class AccordionPanel extends SplitPanel {
   }
 
   /**
+   * A signal emitted when a widget of the AccordionPanel is collapsed or expanded.
+   */
+  get expansionToggled(): ISignal<this, number> {
+    return this._expansionToggled;
+  }
+
+  /**
    * Add a widget to the end of the panel.
    *
    * @param widget - The widget to add to the panel.
@@ -64,6 +72,38 @@ export class AccordionPanel extends SplitPanel {
   addWidget(widget: Widget): void {
     super.addWidget(widget);
     widget.title.changed.connect(this._onTitleChanged, this);
+  }
+
+  /**
+   * Collapse the widget at position `index`.
+   *
+   * #### Notes
+   * If no widget is found for `index`, this will bail.
+   *
+   * @param index Widget index
+   */
+  collapse(index: number): void {
+    const widget = (this.layout as AccordionLayout).widgets[index];
+
+    if (widget && !widget.isHidden) {
+      this._toggleExpansion(index);
+    }
+  }
+
+  /**
+   * Expand the widget at position `index`.
+   *
+   * #### Notes
+   * If no widget is found for `index`, this will bail.
+   *
+   * @param index Widget index
+   */
+  expand(index: number): void {
+    const widget = (this.layout as AccordionLayout).widgets[index];
+
+    if (widget && widget.isHidden) {
+      this._toggleExpansion(index);
+    }
   }
 
   /**
@@ -136,6 +176,78 @@ export class AccordionPanel extends SplitPanel {
   }
 
   /**
+   * Compute the size of widgets in this panel on the title click event.
+   * On closing, the size of the widget is cached and we will try to expand
+   * the last opened widget.
+   * On opening, we will use the cached size if it is available to restore the
+   * widget.
+   * In both cases, if we can not compute the size of widgets, we will let
+   * `SplitLayout` decide.
+   *
+   * @param index - The index of widget to be opened of closed
+   *
+   * @returns Relative size of widgets in this panel, if this size can
+   * not be computed, return `undefined`
+   */
+  private _computeWidgetSize(index: number): number[] | undefined {
+    const layout = this.layout as AccordionLayout;
+
+    const widget = layout.widgets[index];
+    if (!widget) {
+      return undefined;
+    }
+    const isHidden = widget.isHidden;
+    const widgetSizes = layout.absoluteSizes();
+    const delta = (isHidden ? -1 : 1) * this.spacing;
+    const totalSize = widgetSizes.reduce(
+      (prev: number, curr: number) => prev + curr
+    );
+
+    let newSize = [...widgetSizes];
+
+    if (!isHidden) {
+      // Hide the widget
+      const currentSize = widgetSizes[index];
+
+      this._widgetSizesCache.set(widget, currentSize);
+      newSize[index] = 0;
+
+      const widgetToCollapse = newSize.map(sz => sz > 0).lastIndexOf(true);
+      if (widgetToCollapse === -1) {
+        // All widget are closed, let the `SplitLayout` compute widget sizes.
+        return undefined;
+      }
+
+      newSize[widgetToCollapse] =
+        widgetSizes[widgetToCollapse] + currentSize + delta;
+    } else {
+      // Show the widget
+      const previousSize = this._widgetSizesCache.get(widget);
+      if (!previousSize) {
+        // Previous size is unavailable, let the `SplitLayout` compute widget sizes.
+        return undefined;
+      }
+      newSize[index] += previousSize;
+
+      const widgetToCollapse = newSize
+        .map(sz => sz - previousSize > 0)
+        .lastIndexOf(true);
+      if (widgetToCollapse === -1) {
+        // Can not reduce the size of one widget, reduce all opened widgets
+        // proportionally with its size.
+        newSize.forEach((_, idx) => {
+          if (idx !== index) {
+            newSize[idx] -=
+              (widgetSizes[idx] / totalSize) * (previousSize - delta);
+          }
+        });
+      } else {
+        newSize[widgetToCollapse] -= previousSize - delta;
+      }
+    }
+    return newSize.map(sz => sz / (totalSize + delta));
+  }
+  /**
    * Handle the `'click'` event for the accordion panel
    */
   private _evtClick(event: MouseEvent): void {
@@ -149,18 +261,7 @@ export class AccordionPanel extends SplitPanel {
       if (index >= 0) {
         event.preventDefault();
         event.stopPropagation();
-
-        const title = this.titles[index];
-        const widget = (this.layout as AccordionLayout).widgets[index];
-        if (widget.isHidden) {
-          title.classList.add('lm-mod-expanded');
-          title.setAttribute('aria-expanded', 'true');
-          widget.show();
-        } else {
-          title.classList.remove('lm-mod-expanded');
-          title.setAttribute('aria-expanded', 'false');
-          widget.hide();
-        }
+        this._toggleExpansion(index);
       }
     }
   }
@@ -218,6 +319,32 @@ export class AccordionPanel extends SplitPanel {
       }
     }
   }
+
+  private _toggleExpansion(index: number) {
+    const title = this.titles[index];
+    const widget = (this.layout as AccordionLayout).widgets[index];
+
+    const newSize = this._computeWidgetSize(index);
+    if (newSize) {
+      this.setRelativeSizes(newSize, false);
+    }
+
+    if (widget.isHidden) {
+      title.classList.add('lm-mod-expanded');
+      title.setAttribute('aria-expanded', 'true');
+      widget.show();
+    } else {
+      title.classList.remove('lm-mod-expanded');
+      title.setAttribute('aria-expanded', 'false');
+      widget.hide();
+    }
+
+    // Emit the expansion state signal.
+    this._expansionToggled.emit(index);
+  }
+
+  private _widgetSizesCache: WeakMap<Widget, number> = new WeakMap();
+  private _expansionToggled = new Signal<this, number>(this);
 }
 
 /**
@@ -257,6 +384,10 @@ export namespace AccordionPanel {
    * The default implementation of `IRenderer`.
    */
   export class Renderer extends SplitPanel.Renderer implements IRenderer {
+    constructor() {
+      super();
+      this._uuid = ++Renderer._nInstance;
+    }
     /**
      * A selector which matches any title node in the accordion.
      */
@@ -282,11 +413,9 @@ export namespace AccordionPanel {
      */
     createSectionTitle(data: Title<Widget>): HTMLElement {
       const handle = document.createElement('h3');
-      handle.setAttribute('role', 'button');
       handle.setAttribute('tabindex', '0');
       handle.id = this.createTitleKey(data);
       handle.className = this.titleClassName;
-      handle.title = data.caption;
       for (const aData in data.dataset) {
         handle.dataset[aData] = data.dataset[aData];
       }
@@ -297,6 +426,7 @@ export namespace AccordionPanel {
       const label = handle.appendChild(document.createElement('span'));
       label.className = 'lm-AccordionPanel-titleLabel';
       label.textContent = data.label;
+      label.title = data.caption || data.label;
 
       return handle;
     }
@@ -315,12 +445,14 @@ export namespace AccordionPanel {
     createTitleKey(data: Title<Widget>): string {
       let key = this._titleKeys.get(data);
       if (key === undefined) {
-        key = `title-key-${this._titleID++}`;
+        key = `title-key-${this._uuid}-${this._titleID++}`;
         this._titleKeys.set(data, key);
       }
       return key;
     }
 
+    private static _nInstance = 0;
+    private readonly _uuid: number;
     private _titleID = 0;
     private _titleKeys = new WeakMap<Title<Widget>, string>();
   }

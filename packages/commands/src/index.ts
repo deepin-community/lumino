@@ -7,6 +7,10 @@
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
+/**
+ * @packageDocumentation
+ * @module commands
+ */
 import { ArrayExt } from '@lumino/algorithm';
 
 import {
@@ -79,7 +83,7 @@ export class CommandRegistry {
    * @returns A new array of the registered command ids.
    */
   listCommands(): string[] {
-    return Object.keys(this._commands);
+    return Array.from(this._commands.keys());
   }
 
   /**
@@ -90,7 +94,7 @@ export class CommandRegistry {
    * @returns `true` if the command is registered, `false` otherwise.
    */
   hasCommand(id: string): boolean {
-    return id in this._commands;
+    return this._commands.has(id);
   }
 
   /**
@@ -109,12 +113,12 @@ export class CommandRegistry {
     options: CommandRegistry.ICommandOptions
   ): IDisposable {
     // Throw an error if the id is already registered.
-    if (id in this._commands) {
+    if (this._commands.has(id)) {
       throw new Error(`Command '${id}' already registered.`);
     }
 
     // Add the command to the registry.
-    this._commands[id] = Private.createCommand(options);
+    this._commands.set(id, Private.createCommand(options));
 
     // Emit the `commandChanged` signal.
     this._commandChanged.emit({ id, type: 'added' });
@@ -122,7 +126,7 @@ export class CommandRegistry {
     // Return a disposable which will remove the command.
     return new DisposableDelegate(() => {
       // Remove the command from the registry.
-      delete this._commands[id];
+      this._commands.delete(id);
 
       // Emit the `commandChanged` signal.
       this._commandChanged.emit({ id, type: 'removed' });
@@ -145,10 +149,29 @@ export class CommandRegistry {
    * This will cause the `commandChanged` signal to be emitted.
    */
   notifyCommandChanged(id?: string): void {
-    if (id !== undefined && !(id in this._commands)) {
+    if (id !== undefined && !this._commands.has(id)) {
       throw new Error(`Command '${id}' is not registered.`);
     }
     this._commandChanged.emit({ id, type: id ? 'changed' : 'many-changed' });
+  }
+
+  /**
+   * Get the description for a specific command.
+   *
+   * @param id - The id of the command of interest.
+   *
+   * @param args - The arguments for the command.
+   *
+   * @returns The description for the command.
+   */
+  describedBy(
+    id: string,
+    args: ReadonlyPartialJSONObject = JSONExt.emptyObject
+  ): Promise<CommandRegistry.Description> {
+    let cmd = this._commands.get(id);
+    return Promise.resolve(
+      cmd?.describedBy.call(undefined, args) ?? { args: null }
+    );
   }
 
   /**
@@ -165,8 +188,8 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): string {
-    let cmd = this._commands[id];
-    return cmd ? cmd.label.call(undefined, args) : '';
+    let cmd = this._commands.get(id);
+    return cmd?.label.call(undefined, args) ?? '';
   }
 
   /**
@@ -183,7 +206,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): number {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.mnemonic.call(undefined, args) : -1;
   }
 
@@ -199,21 +222,13 @@ export class CommandRegistry {
    *
    * @param args - The arguments for the command.
    *
-   * @returns The icon renderer for the command, or
-   *   an empty string if the command is not registered.
+   * @returns The icon renderer for the command or `undefined`.
    */
   icon(
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
-  ):
-    | VirtualElement.IRenderer
-    | undefined
-    /* <DEPRECATED> */
-    | string /* </DEPRECATED> */ {
-    let cmd = this._commands[id];
-    return cmd
-      ? cmd.icon.call(undefined, args)
-      : /* <DEPRECATED> */ '' /* </DEPRECATED> */ /* <FUTURE> undefined </FUTURE> */;
+  ): VirtualElement.IRenderer | undefined {
+    return this._commands.get(id)?.icon.call(undefined, args);
   }
 
   /**
@@ -230,7 +245,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): string {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.iconClass.call(undefined, args) : '';
   }
 
@@ -248,7 +263,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): string {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.iconLabel.call(undefined, args) : '';
   }
 
@@ -266,7 +281,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): string {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.caption.call(undefined, args) : '';
   }
 
@@ -284,7 +299,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): string {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.usage.call(undefined, args) : '';
   }
 
@@ -302,7 +317,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): string {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.className.call(undefined, args) : '';
   }
 
@@ -320,7 +335,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): CommandRegistry.Dataset {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.dataset.call(undefined, args) : {};
   }
 
@@ -338,7 +353,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): boolean {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.isEnabled.call(undefined, args) : false;
   }
 
@@ -356,7 +371,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): boolean {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.isToggled.call(undefined, args) : false;
   }
 
@@ -374,7 +389,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyJSONObject = JSONExt.emptyObject
   ): boolean {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.isToggleable : false;
   }
 
@@ -392,7 +407,7 @@ export class CommandRegistry {
     id: string,
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): boolean {
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     return cmd ? cmd.isVisible.call(undefined, args) : false;
   }
 
@@ -414,7 +429,7 @@ export class CommandRegistry {
     args: ReadonlyPartialJSONObject = JSONExt.emptyObject
   ): Promise<any> {
     // Reject if the command is not registered.
-    let cmd = this._commands[id];
+    let cmd = this._commands.get(id);
     if (!cmd) {
       return Promise.reject(new Error(`Command '${id}' not registered.`));
     }
@@ -638,7 +653,7 @@ export class CommandRegistry {
   private _keydownEvents: KeyboardEvent[] = [];
   private _keyBindings: CommandRegistry.IKeyBinding[] = [];
   private _exactKeyMatch: CommandRegistry.IKeyBinding | null = null;
-  private _commands: { [id: string]: Private.ICommand } = Object.create(null);
+  private _commands = new Map<string, Private.ICommand>();
   private _commandChanged = new Signal<
     this,
     CommandRegistry.ICommandChangedArgs
@@ -668,6 +683,11 @@ export namespace CommandRegistry {
   export type Dataset = { readonly [key: string]: string };
 
   /**
+   * Commands description.
+   */
+  export type Description = { args: ReadonlyJSONObject | null };
+
+  /**
    * An options object for creating a command.
    *
    * #### Notes
@@ -692,6 +712,17 @@ export namespace CommandRegistry {
      * This may be invoked even when `isEnabled` returns `false`.
      */
     execute: CommandFunc<any | Promise<any>>;
+
+    /**
+     * JSON Schemas describing the command.
+     *
+     * #### Notes
+     * For now, the command arguments are the only one that can be
+     * described.
+     */
+    describedBy?:
+      | Partial<Description>
+      | CommandFunc<Partial<Description> | Promise<Partial<Description>>>;
 
     /**
      * The label for the command.
@@ -728,22 +759,12 @@ export namespace CommandRegistry {
      * This can be an IRenderer object, or a function which returns the
      * renderer based on the provided command arguments.
      *
-     * The default value is undefined.
-     *
-     * DEPRECATED: if set to a string value, the .icon field will function as
-     * an alias for the .iconClass field, for backwards compatibility
+     * The default value is `undefined`.
      */
     icon?:
       | VirtualElement.IRenderer
       | undefined
-      /* <DEPRECATED> */
-      | string /* </DEPRECATED> */
-      | CommandFunc<
-          | VirtualElement.IRenderer
-          | undefined
-          /* <DEPRECATED> */
-          | string /* </DEPRECATED> */
-        >;
+      | CommandFunc<VirtualElement.IRenderer | undefined>;
 
     /**
      * The icon class for the command.
@@ -1169,26 +1190,40 @@ export namespace CommandRegistry {
   }
 
   /**
-   * Format a keystroke for display on the local system.
+   * Format keystrokes for display on the local system.
+   *
+   * If a list of keystrokes is provided, it will be displayed as
+   * a comma-separated string
+   *
+   * @param keystroke The keystrokes to format
+   * @returns The keystrokes representation
    */
-  export function formatKeystroke(keystroke: string): string {
-    let mods = [];
-    let separator = Platform.IS_MAC ? ' ' : '+';
-    let parts = parseKeystroke(keystroke);
-    if (parts.ctrl) {
-      mods.push('Ctrl');
+  export function formatKeystroke(
+    keystroke: string | readonly string[]
+  ): string {
+    return typeof keystroke === 'string'
+      ? formatSingleKey(keystroke)
+      : keystroke.map(formatSingleKey).join(', ');
+
+    function formatSingleKey(key: string) {
+      let mods = [];
+      let separator = Platform.IS_MAC ? ' ' : '+';
+      let parts = parseKeystroke(key);
+      if (parts.ctrl) {
+        mods.push('Ctrl');
+      }
+      if (parts.alt) {
+        mods.push('Alt');
+      }
+      if (parts.shift) {
+        mods.push('Shift');
+      }
+      if (Platform.IS_MAC && parts.cmd) {
+        mods.push('Cmd');
+      }
+      mods.push(parts.key);
+      return mods.map(Private.formatKey).join(separator);
     }
-    if (parts.alt) {
-      mods.push('Alt');
-    }
-    if (parts.shift) {
-      mods.push('Shift');
-    }
-    if (Platform.IS_MAC && parts.cmd) {
-      mods.push('Cmd');
-    }
-    mods.push(parts.key);
-    return mods.map(Private.formatKey).join(separator);
   }
 
   /**
@@ -1260,16 +1295,12 @@ namespace Private {
    */
   export interface ICommand {
     readonly execute: CommandFunc<any>;
+    readonly describedBy: CommandFunc<
+      CommandRegistry.Description | Promise<CommandRegistry.Description>
+    >;
     readonly label: CommandFunc<string>;
     readonly mnemonic: CommandFunc<number>;
-
-    readonly icon: CommandFunc<
-      | VirtualElement.IRenderer
-      | undefined
-      /* <DEPRECATED> */
-      | string /* </DEPRECATED> */
-    >;
-
+    readonly icon: CommandFunc<VirtualElement.IRenderer | undefined>;
     readonly iconClass: CommandFunc<string>;
     readonly iconLabel: CommandFunc<string>;
     readonly caption: CommandFunc<string>;
@@ -1288,30 +1319,24 @@ namespace Private {
   export function createCommand(
     options: CommandRegistry.ICommandOptions
   ): ICommand {
-    let icon;
-    let iconClass;
-
-    /* <DEPRECATED> */
-    if (!options.icon || typeof options.icon === 'string') {
-      // alias icon to iconClass
-      iconClass = asFunc(options.iconClass || options.icon, emptyStringFunc);
-      icon = iconClass;
-    } else {
-      /* /<DEPRECATED> */
-
-      iconClass = asFunc(options.iconClass, emptyStringFunc);
-      icon = asFunc(options.icon, undefinedFunc);
-
-      /* <DEPRECATED> */
-    }
-    /* </DEPRECATED> */
-
     return {
       execute: options.execute,
+      describedBy: asFunc<
+        CommandRegistry.Description | Promise<CommandRegistry.Description>
+      >(
+        typeof options.describedBy === 'function'
+          ? (options.describedBy as CommandFunc<
+              CommandRegistry.Description | Promise<CommandRegistry.Description>
+            >)
+          : { args: null, ...options.describedBy },
+        () => {
+          return { args: null };
+        }
+      ),
       label: asFunc(options.label, emptyStringFunc),
       mnemonic: asFunc(options.mnemonic, negativeOneFunc),
-      icon,
-      iconClass,
+      icon: asFunc(options.icon, undefinedFunc),
+      iconClass: asFunc(options.iconClass, emptyStringFunc),
       iconLabel: asFunc(options.iconLabel, emptyStringFunc),
       caption: asFunc(options.caption, emptyStringFunc),
       usage: asFunc(options.usage, emptyStringFunc),
@@ -1440,7 +1465,7 @@ namespace Private {
   const MAC_DISPLAY: { [key: string]: string } = {
     Backspace: '⌫',
     Tab: '⇥',
-    Enter: '↩',
+    Enter: '⏎',
     Shift: '⇧',
     Ctrl: '⌃',
     Alt: '⌥',
@@ -1462,8 +1487,8 @@ namespace Private {
     PageUp: 'Page Up',
     PageDown: 'Page Down',
     ArrowLeft: 'Left',
-    ArrowUp: 'Right',
-    ArrowRight: 'Up',
+    ArrowUp: 'Up',
+    ArrowRight: 'Right',
     ArrowDown: 'Down',
     Delete: 'Del'
   };
@@ -1578,11 +1603,6 @@ namespace Private {
       if (targ.hasAttribute('data-lm-suppress-shortcuts')) {
         return -1;
       }
-      /* <DEPRECATED> */
-      if (targ.hasAttribute('data-p-suppress-shortcuts')) {
-        return -1;
-      }
-      /* </DEPRECATED> */
       if (Selector.matches(targ, selector)) {
         return dist;
       }

@@ -1,11 +1,11 @@
+/*
+ * Copyright (c) Jupyter Development Team.
+ * Distributed under the terms of the Modified BSD License.
+ */
+
 const path = require('path');
 const fs = require('fs');
 const utils = require('@jupyterlab/buildutils');
-
-// Add version changes to the changelog entry
-const package = JSON.parse(
-  fs.readFileSync('package.json', { encoding: 'utf-8' })
-);
 const versions = [];
 
 let changelog = fs.readFileSync('CHANGELOG.md', { encoding: 'utf-8' });

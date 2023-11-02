@@ -9,7 +9,7 @@
 |----------------------------------------------------------------------------*/
 import { expect } from 'chai';
 
-import { ArrayExt, each, IIterator, iter } from '@lumino/algorithm';
+import { ArrayExt } from '@lumino/algorithm';
 
 import { Message, MessageLoop } from '@lumino/messaging';
 
@@ -93,8 +93,8 @@ class TestLayout extends Layout {
     super.dispose();
   }
 
-  iter(): IIterator<Widget> {
-    return iter(this._widgets);
+  *[Symbol.iterator](): IterableIterator<Widget> {
+    yield* this._widgets;
   }
 
   removeWidget(widget: Widget): void {
@@ -167,6 +167,13 @@ describe('@lumino/widgets', () => {
         widget.layout = layout;
         widget.dispose();
         expect(layout.isDisposed).to.equal(true);
+      });
+
+      it('should dispose of the widget title', () => {
+        const widget = new Widget();
+        const title = widget.title;
+        widget.dispose();
+        expect(title.isDisposed).to.equal(true);
       });
     });
 
@@ -359,7 +366,6 @@ describe('@lumino/widgets', () => {
         let widget = new Widget();
         let layout = new TestLayout();
         widget.layout = layout;
-        widget.layout = layout;
         expect(widget.layout).to.equal(layout);
       });
 
@@ -387,14 +393,14 @@ describe('@lumino/widgets', () => {
       it('should return an iterator over the widget children', () => {
         let widget = new Widget();
         widget.layout = new TestLayout();
-        each(widget.children(), child => {
+        for (const child of widget.children()) {
           expect(child).to.be.an.instanceof(Widget);
-        });
+        }
       });
 
       it('should return an empty iterator if there is no layout', () => {
         let widget = new Widget();
-        expect(widget.children().next()).to.equal(undefined);
+        expect(widget.children().next().done).to.equal(true);
       });
     });
 
@@ -733,10 +739,39 @@ describe('@lumino/widgets', () => {
         widget.dispose();
       });
 
-      it('should add class when switching from scale to display', () => {
+      for (const fromMode of [
+        Widget.HiddenMode.Scale,
+        Widget.HiddenMode.ContentVisibility
+      ]) {
+        it(`should add class when switching from ${fromMode} to display`, () => {
+          let widget = new Widget();
+          Widget.attach(widget, document.body);
+          widget.hiddenMode = fromMode;
+          widget.hide();
+          widget.hiddenMode = Widget.HiddenMode.Display;
+          expect(widget.hasClass('lm-mod-hidden')).to.equal(true);
+          expect(widget.node.style.transform).to.equal('');
+          expect(widget.node.style.willChange).to.equal('auto');
+          widget.dispose();
+        });
+      }
+
+      it('should use content-visibility in relevant mode', () => {
         let widget = new Widget();
         Widget.attach(widget, document.body);
-        widget.hiddenMode = Widget.HiddenMode.Scale;
+        widget.hiddenMode = Widget.HiddenMode.ContentVisibility;
+        widget.hide();
+        expect(widget.hasClass('lm-mod-hidden')).to.equal(false);
+        // @ts-expect-error content-visibility unknown by DOM lib types
+        expect(widget.node.style.contentVisibility).to.equal('hidden');
+        expect(widget.node.style.willChange).to.equal('auto');
+        widget.dispose();
+      });
+
+      it('should add class when switching from content-visibility to display', () => {
+        let widget = new Widget();
+        Widget.attach(widget, document.body);
+        widget.hiddenMode = Widget.HiddenMode.ContentVisibility;
         widget.hide();
         widget.hiddenMode = Widget.HiddenMode.Display;
         expect(widget.hasClass('lm-mod-hidden')).to.equal(true);

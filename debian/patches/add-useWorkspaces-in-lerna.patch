@@ -1,0 +1,13 @@
+Description: add useWorkspaces in lerna
+Author: Yadd <yadd@debian.org>
+Forwarded: not-needed
+Last-Update: 2023-09-02
+
+--- a/lerna.json
++++ b/lerna.json
+@@ -1,4 +1,5 @@
+ {
+   "version": "independent",
++  "useWorkspaces": true,
+   "npmClient": "yarn"
+ }
