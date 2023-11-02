@@ -10,8 +10,8 @@ import {
   Widget
 } from '@lumino/widgets';
 import { expect } from 'chai';
-import { simulate } from 'simulate-event';
 
+const bubbles = true;
 const renderer: AccordionPanel.IRenderer = {
   titleClassName: '.lm-AccordionTitle',
   createHandle: () => document.createElement('div'),
@@ -77,6 +77,36 @@ describe('@lumino/widgets', () => {
       });
     });
 
+    describe('#accessibility()', () => {
+      it('should create a widget ID if it does not exist', () => {
+        let panel = new LogAccordionPanel();
+        let w1 = new Widget();
+        let w2 = new Widget();
+
+        // Expects a widget ID to be created.
+        expect(w1.id).to.be.empty;
+        panel.addWidget(w1);
+        expect(w1.id).to.match(/id-[0-9a-z\-]+/);
+
+        // Expects the widget ID to be unchanged.
+        w2.id = 'test-id';
+        panel.addWidget(w2);
+        expect(w2.id).to.equal('test-id');
+      });
+
+      it('should link the widget to its title', () => {
+        let layout = new AccordionLayout({ renderer });
+        let panel = new LogAccordionPanel({ layout });
+        let w = new Widget();
+        panel.addWidget(w);
+
+        expect(layout.titles[0].getAttribute('aria-controls')).to.equal(w.id);
+        expect(layout.widgets[0].node.getAttribute('aria-labelledby')).to.equal(
+          layout.titles[0].id
+        );
+      });
+    });
+
     describe('#dispose()', () => {
       it('should dispose of the resources held by the panel', () => {
         let panel = new LogAccordionPanel();
@@ -137,6 +167,107 @@ describe('@lumino/widgets', () => {
       });
     });
 
+    describe('#collapse()', () => {
+      let panel: AccordionPanel;
+      let layout: AccordionLayout;
+
+      beforeEach(() => {
+        panel = new AccordionPanel();
+        layout = panel.layout as AccordionLayout;
+        let widgets = [new Widget(), new Widget(), new Widget()];
+        widgets.forEach(w => {
+          panel.addWidget(w);
+        });
+        panel.setRelativeSizes([10, 10, 10, 20]);
+        Widget.attach(panel, document.body);
+        MessageLoop.flush();
+      });
+
+      afterEach(() => {
+        panel.dispose();
+      });
+
+      it('should collapse an expanded widget', () => {
+        panel.collapse(1);
+
+        expect(layout.titles[1].getAttribute('aria-expanded')).to.equal(
+          'false'
+        );
+        expect(layout.titles[1].classList.contains('lm-mod-expanded')).to.be
+          .false;
+        expect(layout.widgets[1].isHidden).to.be.true;
+      });
+    });
+
+    describe('#expand()', () => {
+      let panel: AccordionPanel;
+      let layout: AccordionLayout;
+
+      beforeEach(() => {
+        panel = new AccordionPanel();
+        layout = panel.layout as AccordionLayout;
+        let widgets = [new Widget(), new Widget(), new Widget()];
+        widgets.forEach(w => {
+          panel.addWidget(w);
+        });
+        panel.setRelativeSizes([10, 10, 10, 20]);
+        Widget.attach(panel, document.body);
+        MessageLoop.flush();
+      });
+
+      afterEach(() => {
+        panel.dispose();
+      });
+
+      it('should expand a collapsed widget', () => {
+        panel.collapse(1);
+        panel.expand(1);
+
+        expect(layout.titles[0].getAttribute('aria-expanded')).to.equal('true');
+        expect(layout.titles[0].classList.contains('lm-mod-expanded')).to.be
+          .true;
+        expect(layout.widgets[0].isHidden).to.be.false;
+      });
+    });
+
+    describe('#expansionToggled', () => {
+      let panel: AccordionPanel;
+
+      beforeEach(() => {
+        panel = new AccordionPanel();
+        let widgets = [new Widget(), new Widget(), new Widget()];
+        widgets.forEach(w => {
+          panel.addWidget(w);
+        });
+        panel.setRelativeSizes([10, 10, 10, 20]);
+        Widget.attach(panel, document.body);
+        MessageLoop.flush();
+      });
+
+      afterEach(() => {
+        panel.dispose();
+      });
+
+      it('should be emitted when the a widget is collapsed', done => {
+        panel.expansionToggled.connect((sender, _) => {
+          expect(sender).to.equal(panel);
+          done();
+        });
+        panel.collapse(0);
+      });
+
+      it('should be emitted when the a widget is expanded', done => {
+        // first collapse a widget
+        panel.collapse(0);
+
+        panel.expansionToggled.connect((sender, _) => {
+          expect(sender).to.equal(panel);
+          done();
+        });
+        panel.expand(0);
+      });
+    });
+
     describe('#handleEvent()', () => {
       let panel: LogAccordionPanel;
       let layout: AccordionLayout;
@@ -159,7 +290,7 @@ describe('@lumino/widgets', () => {
 
       context('click', () => {
         it('should collapse an expanded widget', () => {
-          simulate(layout.titles[0], 'click');
+          layout.titles[0].dispatchEvent(new MouseEvent('click', { bubbles }));
           expect(panel.events).to.contain('click');
 
           expect(layout.titles[0].getAttribute('aria-expanded')).to.equal(
@@ -171,10 +302,10 @@ describe('@lumino/widgets', () => {
         });
 
         it('should expand a collapsed widget', () => {
-          // Collapse
-          simulate(layout.titles[0], 'click');
-
-          simulate(layout.titles[0], 'click');
+          // Collapse.
+          layout.titles[0].dispatchEvent(new MouseEvent('click', { bubbles }));
+          // Expand.
+          layout.titles[0].dispatchEvent(new MouseEvent('click', { bubbles }));
 
           expect(layout.titles[0].getAttribute('aria-expanded')).to.equal(
             'true'
@@ -187,7 +318,12 @@ describe('@lumino/widgets', () => {
 
       context('keydown', () => {
         it('should redirect to toggle expansion state if Space is pressed', () => {
-          simulate(layout.titles[0], 'keydown', { key: 'Space' });
+          layout.titles[0].dispatchEvent(
+            new KeyboardEvent('keydown', {
+              bubbles,
+              key: 'Space'
+            })
+          );
           expect(panel.events).to.contain('keydown');
 
           expect(layout.titles[0].getAttribute('aria-expanded')).to.equal(
@@ -197,7 +333,12 @@ describe('@lumino/widgets', () => {
             .false;
           expect(layout.widgets[0].isHidden).to.be.true;
 
-          simulate(layout.titles[0], 'keydown', { key: 'Space' });
+          layout.titles[0].dispatchEvent(
+            new KeyboardEvent('keydown', {
+              bubbles,
+              key: 'Space'
+            })
+          );
           expect(panel.events).to.contain('keydown');
 
           expect(layout.titles[0].getAttribute('aria-expanded')).to.equal(
@@ -209,7 +350,12 @@ describe('@lumino/widgets', () => {
         });
 
         it('should redirect to toggle expansion state if Enter is pressed', () => {
-          simulate(layout.titles[0], 'keydown', { key: 'Enter' });
+          layout.titles[0].dispatchEvent(
+            new KeyboardEvent('keydown', {
+              bubbles,
+              key: 'Enter'
+            })
+          );
           expect(panel.events).to.contain('keydown');
 
           expect(layout.titles[0].getAttribute('aria-expanded')).to.equal(
@@ -219,7 +365,12 @@ describe('@lumino/widgets', () => {
             .false;
           expect(layout.widgets[0].isHidden).to.be.true;
 
-          simulate(layout.titles[0], 'keydown', { key: 'Enter' });
+          layout.titles[0].dispatchEvent(
+            new KeyboardEvent('keydown', {
+              bubbles,
+              key: 'Enter'
+            })
+          );
           expect(panel.events).to.contain('keydown');
 
           expect(layout.titles[0].getAttribute('aria-expanded')).to.equal(
@@ -232,8 +383,12 @@ describe('@lumino/widgets', () => {
 
         it('should focus on the next widget if Arrow Down is pressed', () => {
           layout.titles[1].focus();
-
-          simulate(layout.titles[1], 'keydown', { key: 'ArrowDown' });
+          layout.titles[1].dispatchEvent(
+            new KeyboardEvent('keydown', {
+              bubbles,
+              key: 'ArrowDown'
+            })
+          );
           expect(panel.events).to.contain('keydown');
 
           expect(document.activeElement).to.be.equal(layout.titles[2]);
@@ -241,8 +396,12 @@ describe('@lumino/widgets', () => {
 
         it('should focus on the previous widget if Arrow Up is pressed', () => {
           layout.titles[1].focus();
-
-          simulate(layout.titles[1], 'keydown', { key: 'ArrowUp' });
+          layout.titles[1].dispatchEvent(
+            new KeyboardEvent('keydown', {
+              bubbles,
+              key: 'ArrowUp'
+            })
+          );
           expect(panel.events).to.contain('keydown');
 
           expect(document.activeElement).to.be.equal(layout.titles[0]);
@@ -250,8 +409,12 @@ describe('@lumino/widgets', () => {
 
         it('should focus on the first widget if Home is pressed', () => {
           layout.titles[1].focus();
-
-          simulate(layout.titles[1], 'keydown', { key: 'Home' });
+          layout.titles[1].dispatchEvent(
+            new KeyboardEvent('keydown', {
+              bubbles,
+              key: 'Home'
+            })
+          );
           expect(panel.events).to.contain('keydown');
 
           expect(document.activeElement).to.be.equal(layout.titles[0]);
@@ -259,8 +422,12 @@ describe('@lumino/widgets', () => {
 
         it('should focus on the last widget if End is pressed', () => {
           layout.titles[1].focus();
-
-          simulate(layout.titles[1], 'keydown', { key: 'End' });
+          layout.titles[1].dispatchEvent(
+            new KeyboardEvent('keydown', {
+              bubbles,
+              key: 'End'
+            })
+          );
           expect(panel.events).to.contain('keydown');
 
           expect(document.activeElement).to.be.equal(layout.titles[2]);
@@ -272,7 +439,7 @@ describe('@lumino/widgets', () => {
       it('should attach a click listener to the node', () => {
         let panel = new LogAccordionPanel();
         Widget.attach(panel, document.body);
-        simulate(panel.node, 'click');
+        panel.node.dispatchEvent(new MouseEvent('click', { bubbles }));
         expect(panel.events).to.contain('click');
         panel.dispose();
       });
@@ -280,7 +447,7 @@ describe('@lumino/widgets', () => {
       it('should attach a keydown listener to the node', () => {
         let panel = new LogAccordionPanel();
         Widget.attach(panel, document.body);
-        simulate(panel.node, 'keydown');
+        panel.node.dispatchEvent(new KeyboardEvent('keydown', { bubbles }));
         expect(panel.events).to.contain('keydown');
         panel.dispose();
       });
@@ -290,26 +457,26 @@ describe('@lumino/widgets', () => {
       it('should remove click listener', () => {
         let panel = new LogAccordionPanel();
         Widget.attach(panel, document.body);
-        simulate(panel.node, 'click');
+        panel.node.dispatchEvent(new MouseEvent('click', { bubbles }));
         expect(panel.events).to.contain('click');
 
         Widget.detach(panel);
 
         panel.events = [];
-        simulate(panel.node, 'click');
+        panel.node.dispatchEvent(new MouseEvent('click', { bubbles }));
         expect(panel.events).to.not.contain('click');
       });
 
       it('should remove keydown listener', () => {
         let panel = new LogAccordionPanel();
         Widget.attach(panel, document.body);
-        simulate(panel.node, 'keydown');
+        panel.node.dispatchEvent(new KeyboardEvent('keydown', { bubbles }));
         expect(panel.events).to.contain('keydown');
 
         Widget.detach(panel);
 
         panel.events = [];
-        simulate(panel.node, 'keydown');
+        panel.node.dispatchEvent(new KeyboardEvent('keydown', { bubbles }));
         expect(panel.events).to.not.contain('keydown');
       });
     });
@@ -341,6 +508,45 @@ describe('@lumino/widgets', () => {
             'lm-AccordionPanel-title'
           );
         });
+      });
+    });
+
+    describe('#_computeWidgetSize()', () => {
+      const DELTA = 1e-6;
+      let panel: AccordionPanel;
+      beforeEach(() => {
+        panel = new AccordionPanel({ renderer, titleSpace: 0, spacing: 0 });
+        panel.node.style.height = '500px';
+        Widget.attach(panel, document.body);
+      });
+      it('should not compute the size of panel with only one widget', () => {
+        panel.addWidget(new Widget());
+        MessageLoop.flush();
+        const value = panel['_computeWidgetSize'](0);
+        expect(value).to.be.equal(undefined);
+      });
+      it('should compute the size of panel with two opened widgets', () => {
+        const widgets = [new Widget(), new Widget()];
+        widgets.forEach(w => panel.addWidget(w));
+        MessageLoop.flush();
+        const value0 = panel['_computeWidgetSize'](0);
+        expect(value0.length).to.be.equal(2);
+        expect(value0[0]).to.be.closeTo(0, DELTA);
+        expect(value0[1]).to.be.closeTo(1, DELTA);
+        const value1 = panel['_computeWidgetSize'](1);
+        expect(value1[0]).to.be.closeTo(1, DELTA);
+        expect(value1[1]).to.be.closeTo(0, DELTA);
+      });
+      it('should compute the size of panel with three widgets', () => {
+        const widgets = [new Widget(), new Widget(), new Widget()];
+        widgets.forEach(w => panel.addWidget(w));
+        MessageLoop.flush();
+
+        const value = panel['_computeWidgetSize'](0);
+        expect(value.length).to.be.equal(3);
+        expect(value[0]).to.be.closeTo(0, DELTA);
+        expect(value[1]).to.be.closeTo(0.333333, DELTA);
+        expect(value[2]).to.be.closeTo(0.666666, DELTA);
       });
     });
   });

@@ -1,0 +1,6 @@
+examples/*/build/
+node_modules/
+packages/*/dist/
+packages/*/lib/
+packages/*/tsconfig.tsbuildinfo
+packages/*/types/

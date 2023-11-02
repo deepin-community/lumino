@@ -7,6 +7,10 @@
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
+/**
+ * @packageDocumentation
+ * @module keyboard
+ */
 
 /**
  * An object which represents an abstract keyboard layout.
@@ -92,7 +96,7 @@ export function setKeyboardLayout(layout: IKeyboardLayout): void {
 }
 
 /**
- * A concrete implementation of [[IKeyboardLayout]] based on keycodes.
+ * A concrete implementation of {@link IKeyboardLayout} based on keycodes.
  *
  * The `keyCode` property of a `'keydown'` event is a browser and OS
  * specific representation of the physical key (not character) which

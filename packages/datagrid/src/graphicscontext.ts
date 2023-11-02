@@ -233,11 +233,11 @@ export class GraphicsContext implements IDisposable {
     }
   }
 
-  get globalCompositeOperation(): string {
+  get globalCompositeOperation(): GlobalCompositeOperation {
     return this._context.globalCompositeOperation;
   }
 
-  set globalCompositeOperation(value: string) {
+  set globalCompositeOperation(value: GlobalCompositeOperation) {
     if (this._state.globalCompositeOperation !== value) {
       this._state.globalCompositeOperation = value;
       this._context.globalCompositeOperation = value;
@@ -486,7 +486,7 @@ export class GraphicsContext implements IDisposable {
 
   createImageData(imageData: ImageData): ImageData;
   createImageData(sw: number, sh: number): ImageData;
-  createImageData() {
+  createImageData(): ImageData {
     // eslint-disable-next-line prefer-spread, prefer-rest-params
     return this._context.createImageData.apply(this._context, arguments);
   }

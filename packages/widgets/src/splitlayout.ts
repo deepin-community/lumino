@@ -7,7 +7,7 @@
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-import { ArrayExt, each } from '@lumino/algorithm';
+import { ArrayExt } from '@lumino/algorithm';
 
 import { ElementExt } from '@lumino/domutils';
 
@@ -53,9 +53,9 @@ export class SplitLayout extends PanelLayout {
    */
   dispose(): void {
     // Dispose of the layout items.
-    each(this._items, item => {
+    for (const item of this._items) {
       item.dispose();
-    });
+    }
 
     // Clear the layout state.
     this._box = null;
@@ -158,6 +158,17 @@ export class SplitLayout extends PanelLayout {
   }
 
   /**
+   * Get the absolute sizes of the widgets in the layout.
+   *
+   * @returns A new array of the absolute sizes of the widgets.
+   *
+   * This method **does not** measure the DOM nodes.
+   */
+  absoluteSizes(): number[] {
+    return this._sizers.map(sizer => sizer.size);
+  }
+
+  /**
    * Get the relative sizes of the widgets in the layout.
    *
    * @returns A new array of the relative sizes of the widgets.
@@ -176,13 +187,15 @@ export class SplitLayout extends PanelLayout {
    * Set the relative sizes for the widgets in the layout.
    *
    * @param sizes - The relative sizes for the widgets in the panel.
+   * @param update - Update the layout after setting relative sizes.
+   * Default is True.
    *
    * #### Notes
    * Extra values are ignored, too few will yield an undefined layout.
    *
    * The actual geometry of the DOM nodes is updated asynchronously.
    */
-  setRelativeSizes(sizes: number[]): void {
+  setRelativeSizes(sizes: number[], update = true): void {
     // Copy the sizes and pad with zeros as needed.
     let n = this._sizers.length;
     let temp = sizes.slice(0, n);
@@ -204,7 +217,7 @@ export class SplitLayout extends PanelLayout {
     this._hasNormedSizes = true;
 
     // Trigger an update of the parent widget.
-    if (this.parent) {
+    if (update && this.parent) {
       this.parent.update();
     }
   }
@@ -485,14 +498,8 @@ export class SplitLayout extends PanelLayout {
     for (let i = 0, n = this._items.length; i < n; ++i) {
       if (this._items[i].isHidden) {
         this._handles[i].classList.add('lm-mod-hidden');
-        /* <DEPRECATED> */
-        this._handles[i].classList.add('p-mod-hidden');
-        /* </DEPRECATED> */
       } else {
         this._handles[i].classList.remove('lm-mod-hidden');
-        /* <DEPRECATED> */
-        this._handles[i].classList.remove('p-mod-hidden');
-        /* </DEPRECATED> */
         lastHandleIndex = i;
         nVisible++;
       }
@@ -501,9 +508,6 @@ export class SplitLayout extends PanelLayout {
     // Hide the handle for the last visible widget.
     if (lastHandleIndex !== -1) {
       this._handles[lastHandleIndex].classList.add('lm-mod-hidden');
-      /* <DEPRECATED> */
-      this._handles[lastHandleIndex].classList.add('p-mod-hidden');
-      /* </DEPRECATED> */
     }
 
     // Update the fixed space for the visible items.
@@ -825,6 +829,8 @@ namespace Private {
   ): HTMLDivElement {
     let handle = renderer.createHandle();
     handle.style.position = 'absolute';
+    // Do not use size containment to allow the handle to fill the available space
+    handle.style.contain = 'style';
     return handle;
   }
 

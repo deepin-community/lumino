@@ -15,6 +15,8 @@ import { Drag } from '@lumino/dragdrop';
 
 import { Message } from '@lumino/messaging';
 
+import { ISignal, Signal } from '@lumino/signaling';
+
 import { Panel } from './panel';
 
 import { SplitLayout } from './splitlayout';
@@ -25,7 +27,7 @@ import { Widget } from './widget';
  * A panel which arranges its widgets into resizable sections.
  *
  * #### Notes
- * This class provides a convenience wrapper around a [[SplitLayout]].
+ * This class provides a convenience wrapper around a {@link SplitLayout}.
  */
 export class SplitPanel extends Panel {
   /**
@@ -36,9 +38,6 @@ export class SplitPanel extends Panel {
   constructor(options: SplitPanel.IOptions = {}) {
     super({ layout: Private.createLayout(options) });
     this.addClass('lm-SplitPanel');
-    /* <DEPRECATED> */
-    this.addClass('p-SplitPanel');
-    /* </DEPRECATED> */
   }
 
   /**
@@ -111,6 +110,13 @@ export class SplitPanel extends Panel {
   }
 
   /**
+   * A signal emitted when a split handle has moved.
+   */
+  get handleMoved(): ISignal<this, void> {
+    return this._handleMoved;
+  }
+
+  /**
    * A read-only array of the split handles in the panel.
    */
   get handles(): ReadonlyArray<HTMLDivElement> {
@@ -136,14 +142,16 @@ export class SplitPanel extends Panel {
    * Set the relative sizes for the widgets in the panel.
    *
    * @param sizes - The relative sizes for the widgets in the panel.
+   * @param update - Update the layout after setting relative sizes.
+   * Default is True.
    *
    * #### Notes
    * Extra values are ignored, too few will yield an undefined layout.
    *
    * The actual geometry of the DOM nodes is updated asynchronously.
    */
-  setRelativeSizes(sizes: number[]): void {
-    (this.layout as SplitLayout).setRelativeSizes(sizes);
+  setRelativeSizes(sizes: number[], update = true): void {
+    (this.layout as SplitLayout).setRelativeSizes(sizes, update);
   }
 
   /**
@@ -158,23 +166,14 @@ export class SplitPanel extends Panel {
    */
   handleEvent(event: Event): void {
     switch (event.type) {
-      case 'mousedown':
-        this._evtMouseDown(event as MouseEvent);
-        break;
-      case 'mousemove':
-        this._evtMouseMove(event as MouseEvent);
-        break;
-      case 'mouseup':
-        this._evtMouseUp(event as MouseEvent);
-        break;
       case 'pointerdown':
-        this._evtMouseDown(event as MouseEvent);
+        this._evtPointerDown(event as PointerEvent);
         break;
       case 'pointermove':
-        this._evtMouseMove(event as MouseEvent);
+        this._evtPointerMove(event as PointerEvent);
         break;
       case 'pointerup':
-        this._evtMouseUp(event as MouseEvent);
+        this._evtPointerUp(event as PointerEvent);
         break;
       case 'keydown':
         this._evtKeyDown(event as KeyboardEvent);
@@ -190,7 +189,6 @@ export class SplitPanel extends Panel {
    * A message handler invoked on a `'before-attach'` message.
    */
   protected onBeforeAttach(msg: Message): void {
-    this.node.addEventListener('mousedown', this);
     this.node.addEventListener('pointerdown', this);
   }
 
@@ -198,7 +196,6 @@ export class SplitPanel extends Panel {
    * A message handler invoked on an `'after-detach'` message.
    */
   protected onAfterDetach(msg: Message): void {
-    this.node.removeEventListener('mousedown', this);
     this.node.removeEventListener('pointerdown', this);
     this._releaseMouse();
   }
@@ -208,9 +205,6 @@ export class SplitPanel extends Panel {
    */
   protected onChildAdded(msg: Widget.ChildMessage): void {
     msg.child.addClass('lm-SplitPanel-child');
-    /* <DEPRECATED> */
-    msg.child.addClass('p-SplitPanel-child');
-    /* </DEPRECATED> */
     this._releaseMouse();
   }
 
@@ -219,9 +213,6 @@ export class SplitPanel extends Panel {
    */
   protected onChildRemoved(msg: Widget.ChildMessage): void {
     msg.child.removeClass('lm-SplitPanel-child');
-    /* <DEPRECATED> */
-    msg.child.removeClass('p-SplitPanel-child');
-    /* </DEPRECATED> */
     this._releaseMouse();
   }
 
@@ -242,15 +233,15 @@ export class SplitPanel extends Panel {
   }
 
   /**
-   * Handle the `'mousedown'` event for the split panel.
+   * Handle the `'pointerdown'` event for the split panel.
    */
-  private _evtMouseDown(event: MouseEvent): void {
-    // Do nothing if the left mouse button is not pressed.
+  private _evtPointerDown(event: PointerEvent): void {
+    // Do nothing if the primary button is not pressed.
     if (event.button !== 0) {
       return;
     }
 
-    // Find the handle which contains the mouse target, if any.
+    // Find the handle which contains the target, if any.
     let layout = this.layout as SplitLayout;
     let index = ArrayExt.findFirstIndex(layout.handles, handle => {
       return handle.contains(event.target as HTMLElement);
@@ -266,8 +257,6 @@ export class SplitPanel extends Panel {
     event.stopPropagation();
 
     // Add the extra document listeners.
-    document.addEventListener('mouseup', this, true);
-    document.addEventListener('mousemove', this, true);
     document.addEventListener('pointerup', this, true);
     document.addEventListener('pointermove', this, true);
     document.addEventListener('keydown', this, true);
@@ -290,9 +279,9 @@ export class SplitPanel extends Panel {
   }
 
   /**
-   * Handle the `'mousemove'` event for the split panel.
+   * Handle the `'pointermove'` event for the split panel.
    */
-  private _evtMouseMove(event: MouseEvent): void {
+  private _evtPointerMove(event: PointerEvent): void {
     // Stop the event when dragging a split handle.
     event.preventDefault();
     event.stopPropagation();
@@ -312,10 +301,10 @@ export class SplitPanel extends Panel {
   }
 
   /**
-   * Handle the `'mouseup'` event for the split panel.
+   * Handle the `'pointerup'` event for the split panel.
    */
-  private _evtMouseUp(event: MouseEvent): void {
-    // Do nothing if the left mouse button is not released.
+  private _evtPointerUp(event: PointerEvent): void {
+    // Do nothing if the primary button is not released.
     if (event.button !== 0) {
       return;
     }
@@ -341,15 +330,17 @@ export class SplitPanel extends Panel {
     this._pressData.override.dispose();
     this._pressData = null;
 
+    // Emit the handle moved signal.
+    this._handleMoved.emit();
+
     // Remove the extra document listeners.
-    document.removeEventListener('mouseup', this, true);
-    document.removeEventListener('mousemove', this, true);
     document.removeEventListener('keydown', this, true);
     document.removeEventListener('pointerup', this, true);
     document.removeEventListener('pointermove', this, true);
     document.removeEventListener('contextmenu', this, true);
   }
 
+  private _handleMoved = new Signal<any, void>(this);
   private _pressData: Private.IPressData | null = null;
 }
 
@@ -426,9 +417,6 @@ export namespace SplitPanel {
     createHandle(): HTMLDivElement {
       let handle = document.createElement('div');
       handle.className = 'lm-SplitPanel-handle';
-      /* <DEPRECATED> */
-      handle.classList.add('p-SplitPanel-handle');
-      /* </DEPRECATED> */
       return handle;
     }
   }

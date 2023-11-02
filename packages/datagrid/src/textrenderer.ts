@@ -27,8 +27,9 @@ export class TextRenderer extends CellRenderer {
     this.backgroundColor = options.backgroundColor || '';
     this.verticalAlignment = options.verticalAlignment || 'center';
     this.horizontalAlignment = options.horizontalAlignment || 'left';
+    this.horizontalPadding = options.horizontalPadding || 8;
     this.format = options.format || TextRenderer.formatGeneric();
-    this.elideDirection = options.elideDirection || 'right';
+    this.elideDirection = options.elideDirection || 'none';
     this.wrapText = options.wrapText || false;
   }
 
@@ -50,16 +51,17 @@ export class TextRenderer extends CellRenderer {
   /**
    * The vertical alignment for the cell text.
    */
-  readonly verticalAlignment: CellRenderer.ConfigOption<
-    TextRenderer.VerticalAlignment
-  >;
+  readonly verticalAlignment: CellRenderer.ConfigOption<TextRenderer.VerticalAlignment>;
 
   /**
    * The horizontal alignment for the cell text.
    */
-  readonly horizontalAlignment: CellRenderer.ConfigOption<
-    TextRenderer.HorizontalAlignment
-  >;
+  readonly horizontalAlignment: CellRenderer.ConfigOption<TextRenderer.HorizontalAlignment>;
+
+  /**
+   * The horizontal alignment for the cell text.
+   */
+  readonly horizontalPadding: number;
 
   /**
    * The format function for the cell value.
@@ -67,11 +69,9 @@ export class TextRenderer extends CellRenderer {
   readonly format: TextRenderer.FormatFunc;
 
   /**
-   * Which side to draw the ellipsis.
+   * Which side to draw the ellipsis. Set to 'none' to disable ellipsis.
    */
-  readonly elideDirection: CellRenderer.ConfigOption<
-    TextRenderer.ElideDirection
-  >;
+  readonly elideDirection: CellRenderer.ConfigOption<TextRenderer.ElideDirection>;
 
   /**
    * Boolean flag for applying text wrapping.
@@ -112,6 +112,13 @@ export class TextRenderer extends CellRenderer {
   }
 
   /**
+   * Get the full text to be rendered by the cell.
+   */
+  getText(config: CellRenderer.CellConfig): string {
+    return this.format(config);
+  }
+
+  /**
    * Draw the text for the cell.
    *
    * @param gc - The graphics context to use for drawing.
@@ -136,8 +143,7 @@ export class TextRenderer extends CellRenderer {
     }
 
     // Format the cell value to text.
-    let format = this.format;
-    let text = format(config);
+    let text = this.getText(config);
 
     // Bail if there is no text to draw.
     if (!text) {
@@ -191,7 +197,7 @@ export class TextRenderer extends CellRenderer {
     // Compute the X position for the text.
     switch (hAlign) {
       case 'left':
-        textX = config.x + 8;
+        textX = config.x + this.horizontalPadding;
         boxWidth = config.width - 14;
         break;
       case 'center':
@@ -199,7 +205,7 @@ export class TextRenderer extends CellRenderer {
         boxWidth = config.width;
         break;
       case 'right':
-        textX = config.x + config.width - 8;
+        textX = config.x + config.width - this.horizontalPadding;
         boxWidth = config.width - 14;
         break;
       default:
@@ -218,6 +224,12 @@ export class TextRenderer extends CellRenderer {
     gc.fillStyle = color;
     gc.textAlign = hAlign;
     gc.textBaseline = 'bottom';
+
+    // Terminate call here if we're not eliding or wrapping text
+    if (elideDirection === 'none' && !wrapText) {
+      gc.fillText(text, textX, textY);
+      return;
+    }
 
     // The current text width in pixels.
     let textWidth = gc.measureText(text).width;
@@ -302,31 +314,35 @@ export class TextRenderer extends CellRenderer {
     }
 
     // Elide text that is too long
-    let elide = '\u2026';
+    const elide = '\u2026';
 
-    // Compute elided text
-    if (elideDirection === 'right') {
-      while (textWidth > boxWidth && text.length > 1) {
-        if (text.length > 4 && textWidth >= 2 * boxWidth) {
-          // If text width is substantially bigger, take half the string
-          text = text.substring(0, text.length / 2 + 1) + elide;
+    // Loop until text width fits box or only one character remains
+    while (textWidth > boxWidth && text.length > 1) {
+      // Convert text string to array for dealing with astral symbols
+      const textArr = [...text];
+
+      if (elideDirection === 'right') {
+        // If text width is substantially bigger, take half the string
+        if (textArr.length > 4 && textWidth >= 2 * boxWidth) {
+          text =
+            textArr.slice(0, Math.floor(textArr.length / 2 + 1)).join('') +
+            elide;
         } else {
           // Otherwise incrementally remove the last character
-          text = text.substring(0, text.length - 2) + elide;
+          text = textArr.slice(0, textArr.length - 2).join('') + elide;
         }
-        textWidth = gc.measureText(text).width;
-      }
-    } else {
-      while (textWidth > boxWidth && text.length > 1) {
-        if (text.length > 4 && textWidth >= 2 * boxWidth) {
-          // If text width is substantially bigger, take half the string
-          text = elide + text.substring(text.length / 2);
+      } else {
+        // If text width is substantially bigger, take half the string
+        if (textArr.length > 4 && textWidth >= 2 * boxWidth) {
+          text = elide + textArr.slice(Math.floor(textArr.length / 2)).join('');
         } else {
           // Otherwise incrementally remove the last character
-          text = elide + text.substring(2);
+          text = elide + textArr.slice(2).join('');
         }
-        textWidth = gc.measureText(text).width;
       }
+
+      // Measure new text width
+      textWidth = gc.measureText(text).width;
     }
 
     // Draw the text for the cell.
@@ -351,7 +367,7 @@ export namespace TextRenderer {
   /**
    * A type alias for the supported ellipsis sides.
    */
-  export type ElideDirection = 'left' | 'right';
+  export type ElideDirection = 'left' | 'right' | 'none';
 
   /**
    * An options object for initializing a text renderer.
@@ -393,6 +409,13 @@ export namespace TextRenderer {
     horizontalAlignment?: CellRenderer.ConfigOption<HorizontalAlignment>;
 
     /**
+     * The horizontal padding for the cell text in pixels.
+     *
+     * The default is `8`.
+     */
+    horizontalPadding?: number;
+
+    /**
      * The format function for the renderer.
      *
      * The default is `TextRenderer.formatGeneric()`.
@@ -402,7 +425,7 @@ export namespace TextRenderer {
     /**
      * The ellipsis direction for the cell text.
      *
-     * The default is `'right'`.
+     * The default is `'none'`.
      */
     elideDirection?: CellRenderer.ConfigOption<ElideDirection>;
 
@@ -959,9 +982,8 @@ namespace Private {
   /**
    * A cache of measured font heights.
    */
-  export const fontHeightCache: { [font: string]: number } = Object.create(
-    null
-  );
+  export const fontHeightCache: { [font: string]: number } =
+    Object.create(null);
 
   /**
    * The DOM node used for font height measurement.

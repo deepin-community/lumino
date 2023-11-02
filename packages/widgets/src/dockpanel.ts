@@ -7,7 +7,7 @@
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-import { each, find, IIterator, toArray } from '@lumino/algorithm';
+import { find } from '@lumino/algorithm';
 
 import { MimeData } from '@lumino/coreutils';
 
@@ -15,7 +15,7 @@ import { IDisposable } from '@lumino/disposable';
 
 import { ElementExt, Platform } from '@lumino/domutils';
 
-import { Drag, IDragEvent } from '@lumino/dragdrop';
+import { Drag } from '@lumino/dragdrop';
 
 import { ConflatableMessage, Message, MessageLoop } from '@lumino/messaging';
 
@@ -41,9 +41,7 @@ export class DockPanel extends Widget {
   constructor(options: DockPanel.IOptions = {}) {
     super();
     this.addClass('lm-DockPanel');
-    /* <DEPRECATED> */
-    this.addClass('p-DockPanel');
-    /* </DEPRECATED> */
+    this._document = options.document || document;
     this._mode = options.mode || 'multiple-document';
     this._renderer = options.renderer || DockPanel.defaultRenderer;
     this._edges = options.edges || Private.DEFAULT_EDGES;
@@ -68,6 +66,7 @@ export class DockPanel extends Widget {
 
     // Set up the dock layout for the panel.
     this.layout = new DockLayout({
+      document: this._document,
       renderer,
       spacing: options.spacing,
       hiddenMode: options.hiddenMode
@@ -193,9 +192,9 @@ export class DockPanel extends Widget {
     // Configure the layout for the specified mode.
     switch (value) {
       case 'multiple-document':
-        each(layout.tabBars(), tabBar => {
+        for (const tabBar of layout.tabBars()) {
           tabBar.show();
-        });
+        }
         break;
       case 'single-document':
         layout.restoreLayout(Private.createSingleDocumentConfig(this));
@@ -220,9 +219,9 @@ export class DockPanel extends Widget {
    */
   set tabsMovable(value: boolean) {
     this._tabsMovable = value;
-    each(this.tabBars(), tabbar => {
-      tabbar.tabsMovable = value;
-    });
+    for (const tabBar of this.tabBars()) {
+      tabBar.tabsMovable = value;
+    }
   }
 
   /**
@@ -251,9 +250,9 @@ export class DockPanel extends Widget {
    */
   set addButtonEnabled(value: boolean) {
     this._addButtonEnabled = value;
-    each(this.tabBars(), tabbar => {
-      tabbar.addButtonEnabled = value;
-    });
+    for (const tabBar of this.tabBars()) {
+      tabBar.addButtonEnabled = value;
+    }
   }
 
   /**
@@ -271,8 +270,8 @@ export class DockPanel extends Widget {
    * #### Notes
    * This iterator does not include the generated tab bars.
    */
-  widgets(): IIterator<Widget> {
-    return (this.layout as DockLayout).widgets();
+  *widgets(): IterableIterator<Widget> {
+    yield* (this.layout as DockLayout).widgets();
   }
 
   /**
@@ -284,8 +283,8 @@ export class DockPanel extends Widget {
    * This iterator yields the widgets corresponding to the current tab
    * of each tab bar in the panel.
    */
-  selectedWidgets(): IIterator<Widget> {
-    return (this.layout as DockLayout).selectedWidgets();
+  *selectedWidgets(): IterableIterator<Widget> {
+    yield* (this.layout as DockLayout).selectedWidgets();
   }
 
   /**
@@ -296,8 +295,8 @@ export class DockPanel extends Widget {
    * #### Notes
    * This iterator does not include the user widgets.
    */
-  tabBars(): IIterator<TabBar<Widget>> {
-    return (this.layout as DockLayout).tabBars();
+  *tabBars(): IterableIterator<TabBar<Widget>> {
+    yield* (this.layout as DockLayout).tabBars();
   }
 
   /**
@@ -305,8 +304,8 @@ export class DockPanel extends Widget {
    *
    * @returns A new iterator over the handles in the panel.
    */
-  handles(): IIterator<HTMLDivElement> {
-    return (this.layout as DockLayout).handles();
+  *handles(): IterableIterator<HTMLDivElement> {
+    yield* (this.layout as DockLayout).handles();
   }
 
   /**
@@ -435,34 +434,25 @@ export class DockPanel extends Widget {
   handleEvent(event: Event): void {
     switch (event.type) {
       case 'lm-dragenter':
-        this._evtDragEnter(event as IDragEvent);
+        this._evtDragEnter(event as Drag.Event);
         break;
       case 'lm-dragleave':
-        this._evtDragLeave(event as IDragEvent);
+        this._evtDragLeave(event as Drag.Event);
         break;
       case 'lm-dragover':
-        this._evtDragOver(event as IDragEvent);
+        this._evtDragOver(event as Drag.Event);
         break;
       case 'lm-drop':
-        this._evtDrop(event as IDragEvent);
-        break;
-      case 'mousedown': // <DEPRECATED>
-        this._evtMouseDown(event as MouseEvent);
-        break;
-      case 'mousemove': // <DEPRECATED>
-        this._evtMouseMove(event as MouseEvent);
-        break;
-      case 'mouseup': // <DEPRECATED>
-        this._evtMouseUp(event as MouseEvent);
+        this._evtDrop(event as Drag.Event);
         break;
       case 'pointerdown':
-        this._evtMouseDown(event as MouseEvent);
+        this._evtPointerDown(event as PointerEvent);
         break;
       case 'pointermove':
-        this._evtMouseMove(event as MouseEvent);
+        this._evtPointerMove(event as PointerEvent);
         break;
       case 'pointerup':
-        this._evtMouseUp(event as MouseEvent);
+        this._evtPointerUp(event as PointerEvent);
         break;
       case 'keydown':
         this._evtKeyDown(event as KeyboardEvent);
@@ -482,7 +472,6 @@ export class DockPanel extends Widget {
     this.node.addEventListener('lm-dragleave', this);
     this.node.addEventListener('lm-dragover', this);
     this.node.addEventListener('lm-drop', this);
-    this.node.addEventListener('mousedown', this); // <DEPRECATED>
     this.node.addEventListener('pointerdown', this);
   }
 
@@ -494,7 +483,6 @@ export class DockPanel extends Widget {
     this.node.removeEventListener('lm-dragleave', this);
     this.node.removeEventListener('lm-dragover', this);
     this.node.removeEventListener('lm-drop', this);
-    this.node.removeEventListener('mousedown', this); // <DEPRECATED>
     this.node.removeEventListener('pointerdown', this);
     this._releaseMouse();
   }
@@ -510,9 +498,6 @@ export class DockPanel extends Widget {
 
     // Add the widget class to the child.
     msg.child.addClass('lm-DockPanel-widget');
-    /* <DEPRECATED> */
-    msg.child.addClass('p-DockPanel-widget');
-    /* </DEPRECATED> */
   }
 
   /**
@@ -526,9 +511,6 @@ export class DockPanel extends Widget {
 
     // Remove the widget class from the child.
     msg.child.removeClass('lm-DockPanel-widget');
-    /* <DEPRECATED> */
-    msg.child.removeClass('p-DockPanel-widget');
-    /* </DEPRECATED> */
 
     // Schedule an emit of the layout modified signal.
     MessageLoop.postMessage(this, Private.LayoutModified);
@@ -537,7 +519,7 @@ export class DockPanel extends Widget {
   /**
    * Handle the `'lm-dragenter'` event for the dock panel.
    */
-  private _evtDragEnter(event: IDragEvent): void {
+  private _evtDragEnter(event: Drag.Event): void {
     // If the factory mime type is present, mark the event as
     // handled in order to get the rest of the drag events.
     if (event.mimeData.hasData('application/vnd.lumino.widget-factory')) {
@@ -549,9 +531,12 @@ export class DockPanel extends Widget {
   /**
    * Handle the `'lm-dragleave'` event for the dock panel.
    */
-  private _evtDragLeave(event: IDragEvent): void {
+  private _evtDragLeave(event: Drag.Event): void {
     // Mark the event as handled.
     event.preventDefault();
+
+    if (this._tabsConstrained && event.source !== this) return;
+
     event.stopPropagation();
 
     // The new target might be a descendant, so we might still handle the drop.
@@ -563,10 +548,9 @@ export class DockPanel extends Widget {
   /**
    * Handle the `'lm-dragover'` event for the dock panel.
    */
-  private _evtDragOver(event: IDragEvent): void {
+  private _evtDragOver(event: Drag.Event): void {
     // Mark the event as handled.
     event.preventDefault();
-    event.stopPropagation();
 
     // Show the drop indicator overlay and update the drop
     // action based on the drop target zone under the mouse.
@@ -576,6 +560,7 @@ export class DockPanel extends Widget {
     ) {
       event.dropAction = 'none';
     } else {
+      event.stopPropagation();
       event.dropAction = event.proposedAction;
     }
   }
@@ -583,10 +568,9 @@ export class DockPanel extends Widget {
   /**
    * Handle the `'lm-drop'` event for the dock panel.
    */
-  private _evtDrop(event: IDragEvent): void {
+  private _evtDrop(event: Drag.Event): void {
     // Mark the event as handled.
     event.preventDefault();
-    event.stopPropagation();
 
     // Hide the drop indicator overlay.
     this.overlay.hide(0);
@@ -607,7 +591,10 @@ export class DockPanel extends Widget {
     );
 
     // Bail if the drop zone is invalid.
-    if (zone === 'invalid') {
+    if (
+      (this._tabsConstrained && event.source !== this) ||
+      zone === 'invalid'
+    ) {
       event.dropAction = 'none';
       return;
     }
@@ -678,6 +665,9 @@ export class DockPanel extends Widget {
     // Accept the proposed drop action.
     event.dropAction = event.proposedAction;
 
+    // Stop propagation if we have not bailed so far.
+    event.stopPropagation();
+
     // Activate the dropped widget.
     this.activateWidget(widget);
   }
@@ -701,9 +691,9 @@ export class DockPanel extends Widget {
   }
 
   /**
-   * Handle the `'mousedown'` event for the dock panel.
+   * Handle the `'pointerdown'` event for the dock panel.
    */
-  private _evtMouseDown(event: MouseEvent): void {
+  private _evtPointerDown(event: PointerEvent): void {
     // Do nothing if the left mouse button is not pressed.
     if (event.button !== 0) {
       return;
@@ -722,12 +712,10 @@ export class DockPanel extends Widget {
     event.stopPropagation();
 
     // Add the extra document listeners.
-    document.addEventListener('keydown', this, true);
-    document.addEventListener('mouseup', this, true); // <DEPRECATED>
-    document.addEventListener('mousemove', this, true); // <DEPRECATED>
-    document.addEventListener('pointerup', this, true);
-    document.addEventListener('pointermove', this, true);
-    document.addEventListener('contextmenu', this, true);
+    this._document.addEventListener('keydown', this, true);
+    this._document.addEventListener('pointerup', this, true);
+    this._document.addEventListener('pointermove', this, true);
+    this._document.addEventListener('contextmenu', this, true);
 
     // Compute the offset deltas for the handle press.
     let rect = handle.getBoundingClientRect();
@@ -736,14 +724,14 @@ export class DockPanel extends Widget {
 
     // Override the cursor and store the press data.
     let style = window.getComputedStyle(handle);
-    let override = Drag.overrideCursor(style.cursor!);
+    let override = Drag.overrideCursor(style.cursor!, this._document);
     this._pressData = { handle, deltaX, deltaY, override };
   }
 
   /**
-   * Handle the `'mousemove'` event for the dock panel.
+   * Handle the `'pointermove'` event for the dock panel.
    */
-  private _evtMouseMove(event: MouseEvent): void {
+  private _evtPointerMove(event: PointerEvent): void {
     // Bail early if no drag is in progress.
     if (!this._pressData) {
       return;
@@ -764,9 +752,9 @@ export class DockPanel extends Widget {
   }
 
   /**
-   * Handle the `'mouseup'` event for the dock panel.
+   * Handle the `'pointerup'` event for the dock panel.
    */
-  private _evtMouseUp(event: MouseEvent): void {
+  private _evtPointerUp(event: PointerEvent): void {
     // Do nothing if the left mouse button is not released.
     if (event.button !== 0) {
       return;
@@ -797,12 +785,10 @@ export class DockPanel extends Widget {
     this._pressData = null;
 
     // Remove the extra document listeners.
-    document.removeEventListener('keydown', this, true);
-    document.removeEventListener('mouseup', this, true); // <DEPRECATED>
-    document.removeEventListener('mousemove', this, true); // <DEPRECATED>
-    document.removeEventListener('pointerup', this, true);
-    document.removeEventListener('pointermove', this, true);
-    document.removeEventListener('contextmenu', this, true);
+    this._document.removeEventListener('keydown', this, true);
+    this._document.removeEventListener('pointerup', this, true);
+    this._document.removeEventListener('pointermove', this, true);
+    this._document.removeEventListener('contextmenu', this, true);
   }
 
   /**
@@ -898,13 +884,14 @@ export class DockPanel extends Widget {
         right = target!.right;
         bottom = target!.bottom;
         break;
-      case 'widget-tab':
+      case 'widget-tab': {
         const tabHeight = target!.tabBar.node.getBoundingClientRect().height;
         top = target!.top;
         left = target!.left;
         right = target!.right;
         bottom = target!.bottom + target!.height - tabHeight;
         break;
+      }
       default:
         throw 'unreachable';
     }
@@ -921,7 +908,7 @@ export class DockPanel extends Widget {
    */
   private _createTabBar(): TabBar<Widget> {
     // Create the tab bar.
-    let tabBar = this._renderer.createTabBar();
+    let tabBar = this._renderer.createTabBar(this._document);
 
     // Set the generated tab bar property for the tab bar.
     Private.isGeneratedTabBarProperty.set(tabBar, true);
@@ -1037,7 +1024,7 @@ export class DockPanel extends Widget {
     sender.releaseMouse();
 
     // Extract the data from the args.
-    let { title, tab, clientX, clientY } = args;
+    let { title, tab, clientX, clientY, offset } = args;
 
     // Setup the mime data for the drag operation.
     let mimeData = new MimeData();
@@ -1046,9 +1033,14 @@ export class DockPanel extends Widget {
 
     // Create the drag image for the drag operation.
     let dragImage = tab.cloneNode(true) as HTMLElement;
+    if (offset) {
+      dragImage.style.top = `-${offset.y}px`;
+      dragImage.style.left = `-${offset.x}px`;
+    }
 
     // Create the drag object to manage the drag-drop operation.
     this._drag = new Drag({
+      document: this._document,
       mimeData,
       dragImage,
       proposedAction: 'move',
@@ -1058,14 +1050,9 @@ export class DockPanel extends Widget {
 
     // Hide the tab node in the original tab.
     tab.classList.add('lm-mod-hidden');
-    /* <DEPRECATED> */
-    tab.classList.add('p-mod-hidden'); // Create the cleanup callback.
-    /* </DEPRECATED> */ let cleanup = () => {
+    let cleanup = () => {
       this._drag = null;
       tab.classList.remove('lm-mod-hidden');
-      /* <DEPRECATED> */
-      tab.classList.remove('p-mod-hidden');
-      /* </DEPRECATED> */
     };
 
     // Start the drag operation and cleanup when done.
@@ -1073,6 +1060,7 @@ export class DockPanel extends Widget {
   }
 
   private _edges: DockPanel.IEdges;
+  private _document: Document | ShadowRoot;
   private _mode: DockPanel.Mode;
   private _drag: Drag | null = null;
   private _renderer: DockPanel.IRenderer;
@@ -1093,6 +1081,13 @@ export namespace DockPanel {
    * An options object for creating a dock panel.
    */
   export interface IOptions {
+    /**
+     * The document to use with the dock panel.
+     *
+     * The default is the global `document` instance.
+     */
+
+    document?: Document | ShadowRoot;
     /**
      * The overlay to use with the dock panel.
      *
@@ -1289,10 +1284,8 @@ export namespace DockPanel {
       this.node = document.createElement('div');
       this.node.classList.add('lm-DockPanel-overlay');
       this.node.classList.add('lm-mod-hidden');
-      /* <DEPRECATED> */
-      this.node.classList.add('p-DockPanel-overlay');
-      this.node.classList.add('p-mod-hidden');
-      /* </DEPRECATED> */ this.node.style.position = 'absolute';
+      this.node.style.position = 'absolute';
+      this.node.style.contain = 'strict';
     }
 
     /**
@@ -1327,9 +1320,6 @@ export namespace DockPanel {
 
       // Finally, show the overlay.
       this.node.classList.remove('lm-mod-hidden');
-      /* <DEPRECATED> */
-      this.node.classList.remove('p-mod-hidden');
-      /* </DEPRECATED> */
     }
 
     /**
@@ -1350,9 +1340,7 @@ export namespace DockPanel {
         this._timer = -1;
         this._hidden = true;
         this.node.classList.add('lm-mod-hidden');
-        /* <DEPRECATED> */
-        this.node.classList.add('p-mod-hidden');
-        /* </DEPRECATED> */ return;
+        return;
       }
 
       // Do nothing if a hide is already pending.
@@ -1365,9 +1353,6 @@ export namespace DockPanel {
         this._timer = -1;
         this._hidden = true;
         this.node.classList.add('lm-mod-hidden');
-        /* <DEPRECATED> */
-        this.node.classList.add('p-mod-hidden');
-        /* </DEPRECATED> */
       }, delay);
     }
 
@@ -1389,12 +1374,9 @@ export namespace DockPanel {
      *
      * @returns A new tab bar for a dock panel.
      */
-    createTabBar(): TabBar<Widget> {
-      let bar = new TabBar<Widget>();
+    createTabBar(document?: Document | ShadowRoot): TabBar<Widget> {
+      let bar = new TabBar<Widget>({ document });
       bar.addClass('lm-DockPanel-tabBar');
-      /* <DEPRECATED> */
-      bar.addClass('p-DockPanel-tabBar');
-      /* </DEPRECATED> */
       return bar;
     }
 
@@ -1406,9 +1388,7 @@ export namespace DockPanel {
     createHandle(): HTMLDivElement {
       let handle = document.createElement('div');
       handle.className = 'lm-DockPanel-handle';
-      /* <DEPRECATED> */
-      handle.classList.add('p-DockPanel-handle');
-      /* </DEPRECATED> */ return handle;
+      return handle;
     }
   }
 
@@ -1586,10 +1566,10 @@ namespace Private {
     }
 
     // Get a flat array of the widgets in the panel.
-    let widgets = toArray(panel.widgets());
+    let widgets = Array.from(panel.widgets());
 
     // Get the first selected widget in the panel.
-    let selected = panel.selectedWidgets().next();
+    let selected = panel.selectedWidgets().next().value;
 
     // Compute the current index for the new config.
     let currentIndex = selected ? widgets.indexOf(selected) : -1;

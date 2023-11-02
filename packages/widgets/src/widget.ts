@@ -8,8 +8,6 @@
 |
 | The full license is in the file LICENSE, distributed with this software.
 |----------------------------------------------------------------------------*/
-import { empty, IIterator } from '@lumino/algorithm';
-
 import { IObservableDisposable } from '@lumino/disposable';
 
 import {
@@ -44,9 +42,6 @@ export class Widget implements IMessageHandler, IObservableDisposable {
   constructor(options: Widget.IOptions = {}) {
     this.node = Private.createNode(options);
     this.addClass('lm-Widget');
-    /* <DEPRECATED> */
-    this.addClass('p-Widget');
-    /* </DEPRECATED> */
   }
 
   /**
@@ -79,6 +74,9 @@ export class Widget implements IMessageHandler, IObservableDisposable {
       this._layout.dispose();
       this._layout = null;
     }
+
+    // Dispose the title
+    this.title.dispose();
 
     // Clear the extra data associated with the widget.
     Signal.clearData(this);
@@ -180,30 +178,23 @@ export class Widget implements IMessageHandler, IObservableDisposable {
     if (this._hiddenMode === value) {
       return;
     }
-    this._hiddenMode = value;
-    switch (value) {
-      case Widget.HiddenMode.Display:
-        this.node.style.willChange = 'auto';
-        break;
-      case Widget.HiddenMode.Scale:
-        this.node.style.willChange = 'transform';
-        break;
-    }
 
     if (this.isHidden) {
-      if (value === Widget.HiddenMode.Display) {
-        this.addClass('lm-mod-hidden');
-        /* <DEPRECATED> */
-        this.addClass('p-mod-hidden');
-        /* </DEPRECATED> */
-        this.node.style.transform = '';
-      } else {
-        this.node.style.transform = 'scale(0)';
-        this.removeClass('lm-mod-hidden');
-        /* <DEPRECATED> */
-        this.removeClass('p-mod-hidden');
-        /* </DEPRECATED> */
-      }
+      // Reset styles set by previous mode.
+      this._toggleHidden(false);
+    }
+
+    if (value == Widget.HiddenMode.Scale) {
+      this.node.style.willChange = 'transform';
+    } else {
+      this.node.style.willChange = 'auto';
+    }
+
+    this._hiddenMode = value;
+
+    if (this.isHidden) {
+      // Set styles for new mode.
+      this._toggleHidden(true);
     }
   }
 
@@ -289,8 +280,10 @@ export class Widget implements IMessageHandler, IObservableDisposable {
    *
    * If a layout is not installed, the returned iterator will be empty.
    */
-  children(): IIterator<Widget> {
-    return this._layout ? this._layout.iter() : empty<Widget>();
+  *children(): IterableIterator<Widget> {
+    if (this._layout) {
+      yield* this._layout;
+    }
   }
 
   /**
@@ -418,7 +411,7 @@ export class Widget implements IMessageHandler, IObservableDisposable {
    * Show the widget and make it visible to its parent widget.
    *
    * #### Notes
-   * This causes the [[isHidden]] property to be `false`.
+   * This causes the {@link isHidden} property to be `false`.
    *
    * If the widget is not explicitly hidden, this is a no-op.
    */
@@ -430,15 +423,7 @@ export class Widget implements IMessageHandler, IObservableDisposable {
       MessageLoop.sendMessage(this, Widget.Msg.BeforeShow);
     }
     this.clearFlag(Widget.Flag.IsHidden);
-    this.node.removeAttribute('aria-hidden');
-    if (this.hiddenMode === Widget.HiddenMode.Display) {
-      this.removeClass('lm-mod-hidden');
-      /* <DEPRECATED> */
-      this.removeClass('p-mod-hidden');
-      /* </DEPRECATED> */
-    } else {
-      this.node.style.transform = '';
-    }
+    this._toggleHidden(false);
 
     if (this.isAttached && (!this.parent || this.parent.isVisible)) {
       MessageLoop.sendMessage(this, Widget.Msg.AfterShow);
@@ -453,7 +438,7 @@ export class Widget implements IMessageHandler, IObservableDisposable {
    * Hide the widget and make it hidden to its parent widget.
    *
    * #### Notes
-   * This causes the [[isHidden]] property to be `true`.
+   * This causes the {@link isHidden} property to be `true`.
    *
    * If the widget is explicitly hidden, this is a no-op.
    */
@@ -465,15 +450,7 @@ export class Widget implements IMessageHandler, IObservableDisposable {
       MessageLoop.sendMessage(this, Widget.Msg.BeforeHide);
     }
     this.setFlag(Widget.Flag.IsHidden);
-    this.node.setAttribute('aria-hidden', 'true');
-    if (this.hiddenMode === Widget.HiddenMode.Display) {
-      this.addClass('lm-mod-hidden');
-      /* <DEPRECATED> */
-      this.addClass('p-mod-hidden');
-      /* </DEPRECATED> */
-    } else {
-      this.node.style.transform = 'scale(0)';
-    }
+    this._toggleHidden(true);
 
     if (this.isAttached && (!this.parent || this.parent.isVisible)) {
       MessageLoop.sendMessage(this, Widget.Msg.AfterHide);
@@ -756,6 +733,40 @@ export class Widget implements IMessageHandler, IObservableDisposable {
    */
   protected onChildRemoved(msg: Widget.ChildMessage): void {}
 
+  private _toggleHidden(hidden: boolean) {
+    if (hidden) {
+      switch (this._hiddenMode) {
+        case Widget.HiddenMode.Display:
+          this.addClass('lm-mod-hidden');
+          break;
+        case Widget.HiddenMode.Scale:
+          this.node.style.transform = 'scale(0)';
+          this.node.setAttribute('aria-hidden', 'true');
+          break;
+        case Widget.HiddenMode.ContentVisibility:
+          // @ts-expect-error content-visibility unknown by DOM lib types
+          this.node.style.contentVisibility = 'hidden';
+          this.node.style.zIndex = '-1';
+          break;
+      }
+    } else {
+      switch (this._hiddenMode) {
+        case Widget.HiddenMode.Display:
+          this.removeClass('lm-mod-hidden');
+          break;
+        case Widget.HiddenMode.Scale:
+          this.node.style.transform = '';
+          this.node.removeAttribute('aria-hidden');
+          break;
+        case Widget.HiddenMode.ContentVisibility:
+          // @ts-expect-error content-visibility unknown by DOM lib types
+          this.node.style.contentVisibility = '';
+          this.node.style.zIndex = '';
+          break;
+      }
+    }
+  }
+
   private _flags = 0;
   private _layout: Layout | null = null;
   private _parent: Widget | null = null;
@@ -816,7 +827,12 @@ export namespace Widget {
     /**
      * Hide the widget by setting the `transform` to `'scale(0)'`.
      */
-    Scale
+    Scale,
+
+    /**
+     *Hide the widget by setting the `content-visibility` to `'hidden'`.
+     */
+    ContentVisibility
   }
 
   /**
@@ -1070,10 +1086,10 @@ export namespace Widget {
     if (widget.parent) {
       throw new Error('Cannot attach a child widget.');
     }
-    if (widget.isAttached || document.body.contains(widget.node)) {
+    if (widget.isAttached || widget.node.isConnected) {
       throw new Error('Widget is already attached.');
     }
-    if (!document.body.contains(host)) {
+    if (!host.isConnected) {
       throw new Error('Host is not attached.');
     }
     MessageLoop.sendMessage(widget, Widget.Msg.BeforeAttach);
@@ -1094,7 +1110,7 @@ export namespace Widget {
     if (widget.parent) {
       throw new Error('Cannot detach a child widget.');
     }
-    if (!widget.isAttached || !document.body.contains(widget.node)) {
+    if (!widget.isAttached || !widget.node.isConnected) {
       throw new Error('Widget is not attached.');
     }
     MessageLoop.sendMessage(widget, Widget.Msg.BeforeDetach);

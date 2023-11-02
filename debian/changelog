@@ -1,3 +1,73 @@
+lumino (2023.7.27-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version 2023.7.27
+
+ -- Yadd <yadd@debian.org>  Sat, 02 Sep 2023 11:29:11 +0400
+
+lumino (2023.4.27-2) unstable; urgency=medium
+
+  * Team upload
+  * Back to unstable
+
+ -- Yadd <yadd@debian.org>  Mon, 17 Jul 2023 17:18:00 +0400
+
+lumino (2023.4.27-1) experimental; urgency=medium
+
+  * Team upload
+  * Upstream package:
+    + improve debian/watch
+    + exclude embedded yarn from import
+    + new upstream version 2023.4.27
+  * Add debian/clean
+  * Drop patches: now useless
+  * Update build
+  * Examples:
+    - drop example: needs a CSS plugin for rollup
+    - no more install unbuild examples as main Node.js modules
+  * Update docs: use dh_nodejs_autodocs
+  * Fix autopkgtest
+  * debian/control:
+    + update standards version to 4.6.2, no changes needed.
+    + drop build dependency to webpack
+    + no more provides node-lumino-datastore
+  * Update copyright years
+
+ -- Yadd <yadd@debian.org>  Wed, 03 May 2023 08:38:37 +0400
+
+lumino (2022.6.7-1) unstable; urgency=medium
+
+  * New upstream release.
+  * Bump standards-version to 4.6.1.
+
+ -- Julien Puydt <jpuydt@debian.org>  Tue, 14 Jun 2022 23:12:07 +0200
+
+lumino (2022.1.13-1) unstable; urgency=medium
+
+  * Add dep on node-setimmediate, thanks Caleb Adepitan. (Closes: #1003884)
+  * New upstream release.
+  * Add patch to fix compilation with newer typescript.
+
+ -- Julien Puydt <jpuydt@debian.org>  Wed, 30 Mar 2022 17:38:03 +0200
+
+lumino (2021.12.13-1) unstable; urgency=medium
+
+  * New upstream release.
+
+ -- Julien Puydt <jpuydt@debian.org>  Thu, 23 Dec 2021 14:04:20 +0100
+
+lumino (2021.11.4-3) unstable; urgency=medium
+
+  * Apply patch from Xavier Guimard, to detect breaks.
+
+ -- Julien Puydt <jpuydt@debian.org>  Sat, 27 Nov 2021 11:59:15 +0100
+
+lumino (2021.11.4-2) unstable; urgency=medium
+
+  * Add a d/nodejs/extlinks to unbreak @lumino/polling (Closes: #1000672)
+
+ -- Julien Puydt <jpuydt@debian.org>  Sat, 27 Nov 2021 09:39:29 +0100
+
 lumino (2021.11.4-1) unstable; urgency=medium
 
   * New upstream release.

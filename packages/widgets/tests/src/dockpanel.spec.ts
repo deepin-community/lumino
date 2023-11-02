@@ -10,8 +10,6 @@
 
 import { expect } from 'chai';
 
-import { each } from '@lumino/algorithm';
-
 import { DockPanel, TabBar, Widget } from '@lumino/widgets';
 
 describe('@lumino/widgets', () => {
@@ -29,12 +27,12 @@ describe('@lumino/widgets', () => {
           renderer,
           tabsConstrained: true
         });
-        each(panel.tabBars(), tabBar => {
+        for (const tabBar of panel.tabBars()) {
           expect(tabBar.tabsMovable).to.equal(true);
-        });
-        each(panel.tabBars(), tabBar => {
+        }
+        for (const tabBar of panel.tabBars()) {
           expect(tabBar.renderer).to.equal(renderer);
-        });
+        }
       });
 
       it('should not have tabs constrained by default', () => {
@@ -46,6 +44,16 @@ describe('@lumino/widgets', () => {
         let panel = new DockPanel();
         expect(panel.hasClass('lm-DockPanel')).to.equal(true);
       });
+
+      it('should not have tabbar as child', () => {
+        let panel = new DockPanel();
+        // Adding a widget in the dock panel adds the DOM of a TabBar, but the TabBar
+        // widget should not be a in the children list of the DockPanel widget.
+        panel.addWidget(new Widget());
+        for (const tabBar of panel.tabBars()) {
+          expect(panel.contains(tabBar)).to.be.false;
+        }
+      });
     });
 
     describe('#dispose()', () => {
@@ -56,6 +64,16 @@ describe('@lumino/widgets', () => {
         expect(panel.isDisposed).to.equal(true);
         panel.dispose();
         expect(panel.isDisposed).to.equal(true);
+      });
+    });
+
+    describe('#handles()', () => {
+      it('should return the handles within the dock panel', () => {
+        let dock = new DockPanel();
+        dock.addWidget(new Widget());
+        dock.addWidget(new Widget(), { mode: 'split-bottom' });
+        expect(Array.from(dock.handles())).to.have.lengthOf(2); // one is hidden
+        dock.dispose();
       });
     });
 
@@ -121,14 +139,14 @@ describe('@lumino/widgets', () => {
         let w2 = new Widget();
         panel.addWidget(w1);
         panel.addWidget(w2, { mode: 'split-right', ref: w1 });
-        each(panel.tabBars(), tabBar => {
+        for (const tabBar of panel.tabBars()) {
           expect(tabBar.tabsMovable).to.equal(true);
-        });
+        }
 
         panel.tabsMovable = false;
-        each(panel.tabBars(), tabBar => {
+        for (const tabBar of panel.tabBars()) {
           expect(tabBar.tabsMovable).to.equal(false);
-        });
+        }
       });
     });
   });
