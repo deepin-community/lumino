@@ -15,7 +15,7 @@ Build-Depends: debhelper-compat (= 13)
  , node-tslib (>= 2.3.1)
  , node-typescript
  , rollup
-Standards-Version: 4.6.2
+Standards-Version: 4.7.0
 Homepage: https://github.com/jupyterlab/lumino
 Rules-Requires-Root: no
 Vcs-Git: https://salsa.debian.org/js-team/lumino.git

@@ -701,9 +701,13 @@ describe('@lumino/commands', () => {
     describe('#processKeydownEvent()', () => {
       it('should dispatch on a correct keyboard event', () => {
         let called = false;
+        let _luminoEventType;
+        let _luminoEventKeys;
         registry.addCommand('test', {
-          execute: () => {
+          execute: args => {
             called = true;
+            _luminoEventType = (args._luminoEvent as ReadonlyJSONObject).type;
+            _luminoEventKeys = (args._luminoEvent as ReadonlyJSONObject).keys;
           }
         });
         registry.addKeyBinding({
@@ -718,6 +722,8 @@ describe('@lumino/commands', () => {
           })
         );
         expect(called).to.equal(true);
+        expect(_luminoEventType).to.equal('keybinding');
+        expect(_luminoEventKeys).to.contain('Ctrl ;');
       });
 
       it('should not dispatch on a suppressed node', () => {
@@ -789,6 +795,94 @@ describe('@lumino/commands', () => {
           })
         );
         expect(count).to.equal(0);
+      });
+
+      it('should not dispatch on a prevented keydown event', () => {
+        let called = false;
+        registry.addCommand('test', {
+          execute: args => {
+            called = true;
+          }
+        });
+        registry.addKeyBinding({
+          keys: ['Ctrl ;'],
+          selector: `#${elem.id}`,
+          command: 'test'
+        });
+        const event = new KeyboardEvent('keydown', {
+          keyCode: 59,
+          ctrlKey: true,
+          cancelable: true
+        });
+
+        event.preventDefault();
+
+        elem.dispatchEvent(event);
+        expect(called).to.equal(false);
+      });
+
+      it('should prevent default on dispatch', () => {
+        registry.addCommand('test', {
+          execute: () => void 0
+        });
+        registry.addKeyBinding({
+          keys: ['Ctrl ;'],
+          selector: `#${elem.id}`,
+          command: 'test'
+        });
+        const event = new KeyboardEvent('keydown', {
+          keyCode: 59,
+          ctrlKey: true
+        });
+        let defaultPrevented = false;
+        event.preventDefault = () => {
+          defaultPrevented = true;
+        };
+        elem.dispatchEvent(event);
+        expect(defaultPrevented).to.equal(true);
+      });
+
+      it('should not prevent default when sequence does not match', () => {
+        registry.addCommand('test', {
+          execute: () => void 0
+        });
+        registry.addKeyBinding({
+          keys: ['Ctrl ;'],
+          selector: `#${elem.id}`,
+          command: 'test'
+        });
+        const event = new KeyboardEvent('keydown', {
+          keyCode: 59,
+          ctrlKey: false
+        });
+        let defaultPrevented = false;
+        event.preventDefault = () => {
+          defaultPrevented = true;
+        };
+        elem.dispatchEvent(event);
+        expect(defaultPrevented).to.equal(false);
+      });
+
+      it('should not prevent default if keybinding opts out', () => {
+        registry.addCommand('test', {
+          execute: () => void 0
+        });
+        registry.addKeyBinding({
+          keys: ['Ctrl ;'],
+          selector: `#${elem.id}`,
+          command: 'test',
+          preventDefault: false
+        });
+        const event = new KeyboardEvent('keydown', {
+          keyCode: 59,
+          ctrlKey: true
+        });
+        let defaultPrevented = false;
+        event.preventDefault = () => {
+          defaultPrevented = true;
+        };
+        elem.dispatchEvent(event);
+        expect(defaultPrevented).to.equal(false);
       });
 
       it('should dispatch with multiple chords in a key sequence', () => {
@@ -1225,6 +1319,85 @@ describe('@lumino/commands', () => {
         expect(count).to.equal(0);
         elem.dispatchEvent(eventL);
         expect(count).to.equal(1);
+      });
+    });
+
+    describe('.holdKeyBindingExecution()', () => {
+      let calledPromise: Promise<boolean>;
+      let execute: () => void;
+
+      beforeEach(() => {
+        calledPromise = Promise.race([
+          new Promise<boolean>(_resolve => {
+            execute = () => _resolve(true);
+          }),
+          new Promise<boolean>(resolve =>
+            setTimeout(() => resolve(false), 1000)
+          )
+        ]);
+      });
+
+      it('should proceed with command execution if permission of the event resolves to true', async () => {
+        registry.addCommand('test', {
+          execute
+        });
+        registry.addKeyBinding({
+          keys: ['Ctrl ;'],
+          selector: `#${elem.id}`,
+          command: 'test'
+        });
+        const event = new KeyboardEvent('keydown', {
+          keyCode: 59,
+          ctrlKey: true
+        });
+        registry.holdKeyBindingExecution(event, Promise.resolve(true));
+        elem.dispatchEvent(event);
+        const called = await calledPromise;
+        expect(called).to.equal(true);
+      });
+
+      it('should prevent command execution if permission of the event resolves to false', async () => {
+        registry.addCommand('test', {
+          execute
+        });
+        registry.addKeyBinding({
+          keys: ['Ctrl ;'],
+          selector: `#${elem.id}`,
+          command: 'test'
+        });
+        const event = new KeyboardEvent('keydown', {
+          keyCode: 59,
+          ctrlKey: true
+        });
+        registry.holdKeyBindingExecution(event, Promise.resolve(false));
+        elem.dispatchEvent(event);
+        const called = await calledPromise;
+        expect(called).to.equal(false);
+      });
+
+      it('should prevent command execution if permission for any of the events resolves to false', async () => {
+        registry.addCommand('test', {
+          execute
+        });
+        registry.addKeyBinding({
+          keys: ['Shift ['],
+          selector: `#${elem.id}`,
+          command: 'test'
+        });
+        const shiftEvent = new KeyboardEvent('keydown', {
+          keyCode: 16,
+          shiftKey: true
+        });
+        const bracketEvent = new KeyboardEvent('keydown', {
+          keyCode: 219,
+          shiftKey: true
+        });
+        registry.holdKeyBindingExecution(shiftEvent, Promise.resolve(true));
+        registry.holdKeyBindingExecution(bracketEvent, Promise.resolve(false));
+        elem.dispatchEvent(shiftEvent);
+        elem.dispatchEvent(bracketEvent);
+        const called = await calledPromise;
+        expect(called).to.equal(false);
       });
     });
 
