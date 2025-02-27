@@ -1,3 +1,11 @@
+lumino (2024.3.25-1) unstable; urgency=medium
+
+  * Team upload
+  * Declare compliance with policy 4.7.0
+  * New upstream version 2024.3.25
+
+ -- Yadd <yadd@debian.org>  Sat, 27 Apr 2024 08:29:49 +0400
+
 lumino (2023.7.27-1) unstable; urgency=medium
 
   * Team upload
